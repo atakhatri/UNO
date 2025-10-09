@@ -520,7 +520,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function endGame(winner) {
     gameOverElement.classList.remove("hidden");
-    winnerMessageElement.textContent = `${winner} wins!`;
+    winnerMessageElement.textContent =
+      winner === "You" ? "You win!" : `${winner} wins!`;
     currentPlayerIndex = -1; // Stop the game
     stopTurnTimer();
   }
@@ -601,6 +602,20 @@ document.addEventListener("DOMContentLoaded", () => {
     gameMessageElement.classList.add("hidden");
   }
 
+  // Add a resize listener to handle responsive changes
+  window.addEventListener("resize", () => {
+    // If the game is running with more than 2 players on a small screen, restart.
+    if (
+      window.innerWidth <= 800 &&
+      players.length > 2 &&
+      document.body.classList.contains("in-game")
+    ) {
+      alert(
+        "This mode is not supported on smaller screens. The game will restart."
+      );
+      startGame();
+    }
+  });
   // Initial setup
   startGame();
 });
