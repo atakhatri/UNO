@@ -25,6 +25,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let chosenColor = null; // For wild cards
   let isAwaitingColorChoice = false;
   let turnTimerId = null;
+  let hasPlayerCalledUno = false;
+  let gameDifficulty = "normal"; // Default difficulty
   const TURN_DURATION = 45;
 
   const playerHandElement = document.getElementById("player-hand");
@@ -41,6 +43,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const startScreenElement = document.getElementById("start-screen");
   const timerDisplayElement = document.getElementById("timer-display");
   const quitBtn = document.getElementById("quit-btn");
+  const difficultyLevelElement = document.getElementById("difficulty-level");
+  const difficultyDisplayElement =
+    document.getElementById("difficulty-display");
+  const unoButton = document.getElementById("uno-btn");
   const gameMessageElement = document.getElementById("game-message");
 
   function createDeck() {
@@ -71,8 +77,15 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function dealCards() {
+    let numCardsToDeal;
+    if (gameDifficulty === "easy") numCardsToDeal = 5;
+    else if (gameDifficulty === "hard") numCardsToDeal = 9;
+    else numCardsToDeal = 7; // Normal
+
     players.forEach((player) => {
-      for (let i = 0; i < 7; i++) {
+      // Reset hand before dealing
+      player.hand = [];
+      for (let i = 0; i < numCardsToDeal; i++) {
         player.hand.push(deck.pop());
       }
     });
@@ -210,6 +223,21 @@ document.addEventListener("DOMContentLoaded", () => {
       }'s Turn`;
       turnIndicatorElement.className = "computer-turn";
     }
+
+    // --- UNO Button Logic ---
+    const humanPlayer = players.find((p) => p.isHuman);
+    if (
+      humanPlayer &&
+      humanPlayer.id === currentPlayerIndex &&
+      humanPlayer.hand.length === 2 &&
+      !isAwaitingColorChoice
+    ) {
+      unoButton.classList.remove("hidden");
+    } else {
+      unoButton.classList.add("hidden");
+      unoButton.classList.remove("called"); // Reset visual state
+      hasPlayerCalledUno = false; // Reset logical state
+    }
   }
 
   function isValidMove(card, topDiscard) {
@@ -254,10 +282,20 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function playCard(card, playerIndex) {
+    const player = players[playerIndex];
+
+    // Check for UNO call penalty
+    if (player.isHuman && player.hand.length === 2 && !hasPlayerCalledUno) {
+      showGameMessage("Forgot to call UNO! You draw 2 cards.", 2500);
+      drawCards(playerIndex, 2);
+      // We still let the card be played, but the penalty is applied.
+      // Re-render hands to show the drawn cards before the animation.
+      renderHands();
+    }
+
     stopTurnTimer();
     // Find the source element for the animation
     let sourceElement;
-    const player = players[playerIndex];
     if (player.isHuman) {
       // Find the specific card element in the player's hand
       const cardSelector = `.card[data-color="${card.color}"][data-value="${card.value}"]`;
@@ -273,17 +311,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     animateCardPlay(card, sourceElement, () => {
       // This callback runs after the animation is complete
-      chosenColor = null; // Reset chosen color on a new play
       discardPile.push(card);
-      players[playerIndex].hand = players[playerIndex].hand.filter(
-        (c) => c !== card
-      );
+      player.hand = player.hand.filter((c) => c !== card);
 
       if (checkGameOver()) {
         renderHands(); // Render final state
         return;
       }
 
+      chosenColor = null; // Reset chosen color after the card is officially in the discard pile
       handleSpecialCard(card);
     });
 
@@ -404,18 +440,26 @@ document.addEventListener("DOMContentLoaded", () => {
     stopTurnTimer(); // The computer "thinks" instantly
 
     const topDiscard = discardPile[discardPile.length - 1];
-    // Simple AI: prioritize color match, then value match, then wild
     const hand = players[currentPlayerIndex].hand;
     const validMoves = hand.filter((card) => isValidMove(card, topDiscard));
-    const colorMatch = validMoves.find(
-      (card) => card.color === (chosenColor || topDiscard.color)
-    );
-    const valueMatch = validMoves.find(
-      (card) => card.value === topDiscard.value
-    );
-    const wildCard = validMoves.find((card) => card.color === "black");
 
-    const cardToPlay = colorMatch || valueMatch || wildCard;
+    let cardToPlay;
+
+    if (gameDifficulty === "easy" && validMoves.length > 0) {
+      // Easy AI: Plays a random valid card, making it less strategic.
+      cardToPlay = validMoves[Math.floor(Math.random() * validMoves.length)];
+    } else {
+      // Normal & Hard AI: Prioritize color match, then value match, then wild.
+      // This logic is more effective.
+      const colorMatch = validMoves.find(
+        (card) => card.color === (chosenColor || topDiscard.color)
+      );
+      const valueMatch = validMoves.find(
+        (card) => card.value === topDiscard.value
+      );
+      const wildCard = validMoves.find((card) => card.color === "black");
+      cardToPlay = colorMatch || valueMatch || wildCard;
+    }
 
     if (cardToPlay) {
       playCard(cardToPlay, currentPlayerIndex);
@@ -535,12 +579,15 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("Deck reshuffled from discard pile.");
   }
 
-  function initializeGame(numPlayers) {
+  function initializeGame(numPlayers, difficulty) {
     document.body.classList.add("in-game");
     startScreenElement.classList.add("hidden");
     quitBtn.classList.remove("hidden");
     document.getElementById("game-board").classList.remove("hidden");
+    difficultyDisplayElement.classList.remove("hidden");
+    difficultyDisplayElement.textContent = `Difficulty: ${difficulty}`;
 
+    gameDifficulty = difficulty;
     players = [];
     for (let i = 0; i < numPlayers; i++) {
       players.push({ id: i, hand: [], isHuman: i === 0 });
@@ -582,7 +629,8 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".player-option-btn").forEach((button) => {
     button.addEventListener("click", () => {
       const numPlayers = parseInt(button.dataset.players, 10);
-      initializeGame(numPlayers);
+      const difficulty = difficultyLevelElement.value;
+      initializeGame(numPlayers, difficulty);
     });
   });
   document.querySelectorAll(".color-box").forEach((box) => {
@@ -591,6 +639,25 @@ document.addEventListener("DOMContentLoaded", () => {
       handleColorChoice(color);
     });
   });
+
+  unoButton.addEventListener("click", () => {
+    hasPlayerCalledUno = true;
+    unoButton.classList.add("called");
+    showGameMessage("UNO!", 1500);
+  });
+
+  // Add an event listener for the difficulty dropdown to change its color
+  difficultyLevelElement.addEventListener("change", (e) => {
+    const difficulty = e.target.value;
+    // Remove old classes and add the new one for styling
+    e.target.classList.remove(
+      "difficulty-easy",
+      "difficulty-normal",
+      "difficulty-hard"
+    );
+    e.target.classList.add(`difficulty-${difficulty}`);
+  });
+
   function startGame() {
     document.body.classList.remove("in-game");
     startScreenElement.classList.remove("hidden");
@@ -598,8 +665,18 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("game-board").classList.add("hidden");
     quitBtn.classList.add("hidden");
     turnIndicatorElement.style.display = "none";
+    difficultyDisplayElement.classList.add("hidden");
     timerDisplayElement.style.display = "none";
     gameMessageElement.classList.add("hidden");
+
+    // Set initial difficulty color on load/reset
+    const initialDifficulty = difficultyLevelElement.value;
+    difficultyLevelElement.classList.remove(
+      "difficulty-easy",
+      "difficulty-normal",
+      "difficulty-hard"
+    );
+    difficultyLevelElement.classList.add(`difficulty-${initialDifficulty}`);
   }
 
   // Add a resize listener to handle responsive changes

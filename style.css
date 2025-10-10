@@ -78,20 +78,85 @@ body.in-game {
   border-radius: 10px;
   transition: background-color 0.3s, transform 0.3s;
 }
+
+/* --- Unique Hover Colors for Player Buttons --- */
+.player-option-btn[data-players="2"]:hover {
+  background-color: #5555ff; /* Blue */
+  box-shadow: 0 0 15px rgba(85, 85, 255, 0.7);
+}
+.player-option-btn[data-players="3"]:hover {
+  background-color: #55aa55; /* Green */
+  box-shadow: 0 0 15px rgba(85, 170, 85, 0.7);
+}
+.player-option-btn[data-players="4"]:hover {
+  background-color: #ffaa00; /* Yellow */
+  box-shadow: 0 0 15px rgba(255, 170, 0, 0.7);
+}
+
+/* General hover transform for all player buttons */
 .player-option-btn:hover {
-  background-color: #555;
+  background-color: #ff5555;
   transform: scale(1.05);
+}
+
+.difficulty-selection {
+  margin-top: 25px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.1em;
+  font-weight: bold;
+}
+
+#difficulty-level {
+  padding: 8px 12px;
+  font-size: 1em;
+  font-weight: bold;
+  background-color: #444;
+  color: white;
+  border: 2px solid white;
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-appearance: none; /* Removes default browser styling */
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27292.4%27%20height%3D%27292.4%27%3E%3Cpath%20fill%3D%27%23ffffff%27%20d%3D%27M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.4-5.4-12.8z%27%2F%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px top 50%;
+  background-size: 0.65em auto;
+  padding-right: 30px; /* Make space for the arrow */
+  transition: background-color 0.3s, transform 0.3s, box-shadow 0.3s;
+}
+
+#difficulty-level:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+}
+
+/* --- Difficulty Colors --- */
+#difficulty-level.difficulty-easy {
+  background-color: #55aa55; /* Green */
+  color: white;
+}
+#difficulty-level.difficulty-normal {
+  background-color: #ffaa00; /* Yellow */
+  color: #000; /* Black text for better contrast on yellow */
+}
+#difficulty-level.difficulty-hard {
+  background-color: #ff5555; /* Red */
+  color: white;
 }
 
 #turn-indicator {
   position: absolute;
-  top: 20px;
-  left: 20px;
+  top: calc(50% + 80px); /* Position below the deck/pile container */
+  left: 50%;
+  transform: translateX(-50%);
   padding: 10px 20px;
   border-radius: 20px;
   font-weight: bold;
   transition: background-color 0.5s, color 0.5s;
   z-index: 10;
+  white-space: nowrap; /* Prevent text wrapping */
 }
 .player-turn {
   background-color: #5555ff;
@@ -111,6 +176,7 @@ body.in-game {
   border-radius: 8px;
   cursor: pointer;
   font-weight: bold;
+  transition: background-color 0.3s, transform 0.2s;
   z-index: 10;
 }
 
@@ -118,6 +184,26 @@ body.in-game {
 #start-screen.hidden,
 .hidden {
   display: none;
+}
+
+#quit-btn:hover {
+  background-color: #c72a18; /* Red color */
+  transform: scale(1.05);
+}
+
+#difficulty-display {
+  position: absolute;
+  top: 65px; /* Position below the quit button */
+  right: 20px;
+  padding: 5px 10px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  font-size: 0.9em;
+  font-weight: bold;
+  text-transform: capitalize;
+  z-index: 10;
+  pointer-events: none; /* Not interactive */
 }
 
 .hand {
@@ -461,6 +547,51 @@ body.in-game {
   transform: scale(1.1);
 }
 
+.color-box:active {
+  transform: scale(0.95);
+}
+
+/* --- UNO Button --- */
+#uno-btn {
+  position: absolute;
+  bottom: 160px; /* Position above the player's hand */
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 15px 30px;
+  font-size: 1.8em;
+  font-weight: bold;
+  color: white;
+  background-color: #ff5555;
+  border: 3px solid white;
+  border-radius: 50px;
+  cursor: pointer;
+  z-index: 50;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s, background-color 0.2s;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    transform: translateX(-50%) scale(1.05);
+  }
+}
+
+#uno-btn:hover {
+  transform: translateX(-50%) scale(1.1);
+  animation-play-state: paused; /* Stop pulsing on hover */
+}
+
+#uno-btn.called {
+  background-color: #55aa55; /* Green when called */
+  animation: none; /* Stop pulsing when called */
+}
+
 /* --- Responsive Design --- */
 
 @media (max-width: 800px) {
@@ -492,6 +623,26 @@ body.in-game {
     display: none;
   }
 
+  /* Change the 2-player button text to be more direct on mobile */
+  .player-option-btn[data-players="2"] {
+    font-size: 0; /* Hide original text */
+  }
+
+  .player-option-btn[data-players="2"]::before {
+    content: "PLAY UNO!!!";
+    font-size: 1rem; /* Use rem to avoid being affected by parent's font-size: 0 */
+    letter-spacing: 1px;
+  }
+
+  .difficulty-selection {
+    margin-top: 20px;
+    font-size: 1em;
+  }
+
+  #difficulty-level {
+    padding: 8px 10px;
+    padding-right: 25px; /* Adjust for mobile */
+  }
   .deck-pile-container {
     top: 45%; /* Move deck and discard up slightly on mobile */
   }
@@ -514,13 +665,11 @@ body.in-game {
 
   #player-hand {
     width: 100%;
-    justify-content: flex-start; /* Align cards to the left for scrolling */
-    overflow-x: auto;
-    overflow-y: hidden;
-    white-space: nowrap;
+    justify-content: center; /* Center the cards horizontally */
+    flex-wrap: wrap; /* Allow cards to wrap to the next line */
     padding: 0 10px 10px 10px;
     bottom: 10px;
-    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    box-sizing: border-box; /* Ensure padding is included in the width */
   }
 
   .opponent-hand {
@@ -558,5 +707,15 @@ body.in-game {
   #turn-indicator {
     font-size: 0.8em;
     padding: 8px 12px;
+  }
+
+  #difficulty-display {
+    top: 55px; /* Adjust position for smaller quit button */
+  }
+
+  #uno-btn {
+    bottom: auto;
+    top: calc(45% + 80px); /* Position below deck/discard on mobile */
+    font-size: 1.2em;
   }
 }
