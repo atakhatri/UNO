@@ -6,17 +6,15 @@ import {
     shuffleDeck,
     drawCards,
     isCardPlayable,
-} from "../game-logic";
-import type {
-    Player,
-    Card,
-    Color,
-    Difficulty,
-    AnimatedCard,
-} from "./game-types";
-import { difficultySettings } from "./game-types";
+    Card, // Import Card directly
+} from "../game-logic"; // Correct path to game-logic
+import type { Player, Color, Difficulty, AnimatedCard } from "./game-types"; // Correct path
+import { difficultySettings } from "./game-types"; // Correct path
 
 const ANIMATION_DURATION = 500; // ms
+
+// --- Rest of the hook code remains the same ---
+// ... (Keep the existing logic from your uploaded game-old/useUnoGame.ts) ...
 
 /**
  * This custom hook encapsulates all the core logic and state for the Uno game.
@@ -36,7 +34,6 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
 
     const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
     const [playedWildCard, setPlayedWildCard] = useState<Card | null>(null);
-    const [isUnoState, setIsUnoState] = useState(false); // Player 0 has one card left
     const [playerCalledUno, setPlayerCalledUno] = useState(false); // Player 0 called UNO
 
     const [gameMessage, setGameMessage] = useState<string | null>(null);
@@ -50,6 +47,11 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
      * This is a helper function used when the deck runs out.
      */
     const reshuffleDeck = useCallback(() => {
+        console.log("Reshuffling deck...");
+        if (discardPile.length <= 1) {
+            console.warn("Not enough cards in discard pile to reshuffle.");
+            return []; // Return empty deck if can't reshuffle
+        }
         const topCard = discardPile[discardPile.length - 1];
         const restOfPile = discardPile.slice(0, -1);
         const newDeck = shuffleDeck(restOfPile);
@@ -81,7 +83,7 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
             }
 
             // Reset UNO call state for the *next* player's turn
-            if (currentPlayer.id === 0) {
+            if (currentPlayer?.id === 0) {
                 setPlayerCalledUno(false);
             }
 
@@ -97,23 +99,35 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
      * Handles the logic for a player (or computer) drawing a card from the deck.
      * @param playerIndex - The index of the player who will draw.
      * @param count - The number of cards to draw.
+     * @returns The updated deck after drawing.
      */
     const drawCardFromDeck = useCallback(
-        (playerIndex: number, count: number) => {
-            let currentDeck = deck;
+        (playerIndex: number, count: number): Card[] => {
+            let currentDeck = [...deck]; // Create mutable copy
             if (currentDeck.length < count) {
-                currentDeck = reshuffleDeck();
+                const reshuffled = reshuffleDeck();
+                if (reshuffled.length < count) {
+                    console.error("Not enough cards to draw even after reshuffle!");
+                    setGameMessage("Not enough cards left!");
+                    // Maybe end game or handle differently
+                    return []; // Return empty deck
+                }
+                currentDeck = reshuffled;
             }
+
 
             const { drawn, remaining } = drawCards(currentDeck, count);
 
-            // Trigger animation for each card drawn (simplified to one animation)
-            setAnimatedCard({
-                card: drawn[0], // Show animation for the first card
-                from: "deck",
-                to: playerIndex === 0 ? "player" : "opponent",
-                playerId: playerIndex,
-            });
+            // Trigger animation (simplified)
+            if (drawn.length > 0) {
+                setAnimatedCard({
+                    card: drawn[0], // Show animation for the first card
+                    from: "deck",
+                    to: playerIndex === 0 ? "player" : "opponent",
+                    playerId: playerIndex,
+                });
+            }
+
 
             setTimeout(() => {
                 setPlayers((prevPlayers) =>
@@ -122,14 +136,10 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
                     )
                 );
                 setDeck(remaining);
-                if (playerIndex === 0) {
-                    setIsUnoState(false); // Drawing a card negates UNO state
-                }
                 setAnimatedCard(null);
-
-                // If the draw was NOT from a card effect (e.g., manual draw), end the turn.
-                // This is now handled by the `drawCard` function exposed to the UI.
             }, ANIMATION_DURATION);
+
+            return remaining; // Return the updated deck state
         },
         [deck, reshuffleDeck]
     );
@@ -141,8 +151,11 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
      */
     const applyCardEffect = useCallback(
         (card: Card, chosenColor?: Color) => {
-            const nextPlayerIndex =
-                (currentPlayerIndex + playDirection + players.length) % players.length;
+            const nextPlayerIndex = getNextPlayerIndex(
+                currentPlayerIndex,
+                playDirection
+            );
+
 
             switch (card.value) {
                 case "draw-two":
@@ -159,13 +172,24 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
                     if (players.length === 2) {
                         endTurn(2); // Acts like a skip in a 2-player game
                     } else {
-                        setPlayDirection((prev) => (prev * -1) as 1 | -1);
-                        endTurn();
+                        const newDirection = (playDirection * -1) as 1 | -1;
+                        setPlayDirection(newDirection);
+                        // End turn based on new direction
+                        setCurrentPlayerIndex(
+                            (currentPlayerIndex + newDirection + players.length) % players.length
+                        );
+
                     }
                     break;
                 case "wild":
-                    if (!chosenColor) break; // Should not happen
+                    if (!chosenColor) {
+                        console.error("Chosen color missing for wild card effect");
+                        endTurn(); // Just end turn if color somehow missing
+                        break;
+                    }
                     setGameMessage(`Color changed to ${chosenColor}!`);
+                    // Update the card in the discard pile state *after* timeout
+                    // We already pushed the black card, now replace it
                     setDiscardPile((prev) => [
                         ...prev.slice(0, -1),
                         { ...card, color: chosenColor },
@@ -173,7 +197,11 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
                     endTurn();
                     break;
                 case "wild-draw-four":
-                    if (!chosenColor) break; // Should not happen
+                    if (!chosenColor) {
+                        console.error("Chosen color missing for wild-draw-four effect");
+                        endTurn(); // Just end turn if color somehow missing
+                        break;
+                    }
                     setGameMessage(`Wild Draw Four! Color is ${chosenColor}!`);
                     setDiscardPile((prev) => [
                         ...prev.slice(0, -1),
@@ -189,6 +217,19 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
         [currentPlayerIndex, drawCardFromDeck, endTurn, playDirection, players.length]
     );
 
+    // Helper to get next player index easily
+    const getNextPlayerIndex = (
+        currentIndex: number,
+        direction: 1 | -1,
+        skip = 1
+    ): number => {
+        if (!players.length) return 0;
+        return (
+            (currentIndex + direction * skip + players.length) % players.length
+        );
+    };
+
+
     /**
      * Main function to play a card from a player's hand.
      * @param card - The card being played.
@@ -196,35 +237,54 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
      */
     const playCard = useCallback(
         (card: Card, handIndex: number) => {
-            if (winner) return;
-            if (players[currentPlayerIndex]?.isComputer) return; // Block human play on computer turn
+            if (winner || !isPlayerTurn) return; // Check if it's player's turn
 
             if (!isCardPlayable(card, topOfDiscard)) {
                 setGameMessage("You can't play that card!");
+                // Use timeout to clear the message
+                setTimeout(() => setGameMessage(null), 1500);
                 return;
             }
 
             const currentPlayer = players[currentPlayerIndex];
-            const newHand = [...currentPlayer.hand];
+            let newHand = [...currentPlayer.hand];
             newHand.splice(handIndex, 1);
+            let newDeck = [...deck]; // Copy deck for potential penalty draw
 
-            // Check for UNO call penalty
+
+            // Check for UNO call penalty *before* animating
+            let drewPenaltyCards = false;
             if (newHand.length === 1 && !playerCalledUno) {
+                drewPenaltyCards = true;
                 setGameMessage("Forgot to call UNO! Drawing 2 cards.");
-                let currentDeck = deck;
-                if (currentDeck.length < 2) {
-                    currentDeck = reshuffleDeck();
+                if (newDeck.length < 2) {
+                    const reshuffled = reshuffleDeck();
+                    if (reshuffled.length < 2) {
+                        console.error("Not enough cards for penalty draw!");
+                        // Handle this case - maybe can't apply penalty?
+                    } else {
+                        newDeck = reshuffled;
+                    }
                 }
-                const { drawn, remaining } = drawCards(currentDeck, 2);
-                newHand.push(...drawn); // Add penalty cards
-                setDeck(remaining);
+                if (newDeck.length >= 2) { // Ensure deck has cards
+                    const { drawn, remaining } = drawCards(newDeck, 2);
+                    newHand.push(...drawn); // Add penalty cards
+                    newDeck = remaining;
+                }
+
             }
 
-            // Reset UNO state after play is complete
+            // Update player state immediately before animation (for penalty cards)
+            setPlayers((prevPlayers) =>
+                prevPlayers.map((p, i) =>
+                    i === currentPlayerIndex ? { ...p, hand: newHand } : p
+                )
+            );
+            setDeck(newDeck); // Update deck if penalty cards were drawn
+
+            // Reset playerCalledUno after play attempt (even if penalty)
             setPlayerCalledUno(false);
-            if (newHand.length !== 1) {
-                setIsUnoState(false);
-            }
+
 
             setAnimatedCard({
                 card,
@@ -233,30 +293,34 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
                 playerId: currentPlayer.id,
             });
 
+            // Update discard pile after animation
             setTimeout(() => {
-                setPlayers((prevPlayers) =>
-                    prevPlayers.map((p, i) =>
-                        i === currentPlayerIndex ? { ...p, hand: newHand } : p
-                    )
-                );
                 setDiscardPile((prev) => [...prev, card]);
                 setAnimatedCard(null);
 
-                if (newHand.length === 0) {
+                // Check for winner *after* animation completes
+                if (newHand.length === 0 && !drewPenaltyCards) {
                     setWinner(currentPlayer);
+                    setGameMessage(`${currentPlayer.name} Wins! 🎉`);
                     return;
                 }
 
+                // Handle effects or open color picker
                 if (card.color === "black") {
                     setPlayedWildCard(card);
-                    setIsColorPickerOpen(true);
-                } else {
+                    setIsColorPickerOpen(true); // Open picker, effect applied in selectColor
+                } else if (!drewPenaltyCards) { // Only apply effect if no penalty draw happened
                     applyCardEffect(card);
+                } else {
+                    // If penalty was drawn, just end the turn without applying effect
+                    endTurn();
                 }
+
             }, ANIMATION_DURATION);
         },
         [
             winner,
+            isPlayerTurn,
             players,
             currentPlayerIndex,
             topOfDiscard,
@@ -264,6 +328,7 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
             deck,
             reshuffleDeck,
             applyCardEffect,
+            endTurn // Added endTurn dependency
         ]
     );
 
@@ -274,9 +339,15 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
     const drawCard = useCallback(() => {
         if (!isPlayerTurn || winner) return;
 
-        let currentDeck = deck;
+        let currentDeck = [...deck]; // Create mutable copy
         if (currentDeck.length === 0) {
-            currentDeck = reshuffleDeck();
+            const reshuffled = reshuffleDeck();
+            if (reshuffled.length === 0) {
+                console.error("Cannot draw card, deck empty after reshuffle attempt.");
+                setGameMessage("No cards left to draw!");
+                return;
+            }
+            currentDeck = reshuffled;
         }
         const { drawn, remaining } = drawCards(currentDeck, 1);
 
@@ -294,7 +365,6 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
                 )
             );
             setDeck(remaining);
-            setIsUnoState(false); // Drawing a card negates UNO state
             setAnimatedCard(null);
             setGameMessage("You drew a card.");
             endTurn(); // Pass turn after drawing
@@ -308,49 +378,57 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
         if (winner || isPlayerTurn) return;
 
         const computerPlayer = players[currentPlayerIndex];
+        if (!computerPlayer || !computerPlayer.isComputer) return; // Safety check
 
-        // --- Smarter AI Logic ---
+
+        // --- AI Logic ---
         let cardToPlay: Card | null = null;
         let playableCardIndex = -1;
 
-        // 1. Find all playable cards
+        // Find playable cards
         const playableCards = computerPlayer.hand
             .map((card, index) => ({ card, index }))
             .filter(({ card }) => isCardPlayable(card, topOfDiscard));
 
         if (playableCards.length > 0) {
-            // Simple strategy: play the first playable card
-            // (Original logic was good, let's keep it)
+            // Prioritize color match, then value match, then wild
             const colorMatch = playableCards.find(
-                ({ card }) => card.color === topOfDiscard.color
+                ({ card }) => card.color === topOfDiscard?.color
             );
+            const valueMatch = playableCards.find(
+                ({ card }) => card.value === topOfDiscard?.value && card.color !== 'black'
+            );
+            const wildCard = playableCards.find(
+                ({ card }) => card.color === "black"
+            );
+
             if (colorMatch) {
                 cardToPlay = colorMatch.card;
                 playableCardIndex = colorMatch.index;
+            } else if (valueMatch) {
+                cardToPlay = valueMatch.card;
+                playableCardIndex = valueMatch.index;
+            } else if (wildCard) {
+                cardToPlay = wildCard.card;
+                playableCardIndex = wildCard.index;
             } else {
-                const valueMatch = playableCards.find(
-                    ({ card }) =>
-                        card.value === topOfDiscard.value && card.color !== "black"
-                );
-                if (valueMatch) {
-                    cardToPlay = valueMatch.card;
-                    playableCardIndex = valueMatch.index;
-                } else {
-                    const wildCard = playableCards.find(
-                        ({ card }) => card.color === "black"
-                    );
-                    if (wildCard) {
-                        cardToPlay = wildCard.card;
-                        playableCardIndex = wildCard.index;
-                    }
-                }
+                // Should be covered by playableCards.length > 0, but as fallback:
+                cardToPlay = playableCards[0].card;
+                playableCardIndex = playableCards[0].index;
             }
         }
 
-        // If a playable card was found
+
+        // Play the chosen card or draw if none found
         if (cardToPlay && playableCardIndex !== -1) {
             const newHand = [...computerPlayer.hand];
             newHand.splice(playableCardIndex, 1);
+
+            // "Call" UNO if applicable
+            if (newHand.length === 1) {
+                setGameMessage(`Player ${computerPlayer.id + 1} calls UNO!`);
+            }
+
 
             setAnimatedCard({
                 card: cardToPlay,
@@ -370,25 +448,18 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
 
                 if (newHand.length === 0) {
                     setWinner(computerPlayer);
+                    setGameMessage(`Player ${computerPlayer.id + 1} Wins!`);
                     return;
                 }
 
                 if (cardToPlay!.color === "black") {
                     // AI chooses the color it has the most of
                     const colorCounts: Record<string, number> = {
-                        red: 0,
-                        green: 0,
-                        blue: 0,
-                        yellow: 0,
+                        red: 0, green: 0, blue: 0, yellow: 0,
                     };
-                    newHand.forEach((c) => {
-                        if (c.color !== "black") {
-                            colorCounts[c.color]++;
-                        }
-                    });
+                    newHand.forEach((c) => { if (c.color !== "black") { colorCounts[c.color]++; } });
                     const chosenColor = Object.keys(colorCounts).reduce(
-                        (a, b) => (colorCounts[a] > colorCounts[b] ? a : b),
-                        "red"
+                        (a, b) => (colorCounts[a] > colorCounts[b] ? a : b), "red"
                     ) as Color;
                     applyCardEffect(cardToPlay!, chosenColor);
                 } else {
@@ -398,31 +469,11 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
         } else {
             // Computer has no playable card, must draw
             setGameMessage(`Player ${computerPlayer.id + 1} is drawing a card.`);
-            let currentDeck = deck;
-            if (currentDeck.length === 0) {
-                currentDeck = reshuffleDeck();
-            }
-            const { drawn, remaining } = drawCards(currentDeck, 1);
-
-            setAnimatedCard({
-                card: drawn[0],
-                from: "deck",
-                to: "opponent",
-                playerId: computerPlayer.id,
-            });
-
+            drawCardFromDeck(currentPlayerIndex, 1);
+            // We need to end the turn *after* the draw animation completes
             setTimeout(() => {
-                setPlayers((prevPlayers) =>
-                    prevPlayers.map((p, i) =>
-                        i === currentPlayerIndex
-                            ? { ...p, hand: [...p.hand, ...drawn] }
-                            : p
-                    )
-                );
-                setDeck(remaining);
-                setAnimatedCard(null);
-                endTurn(); // End turn after drawing
-            }, ANIMATION_DURATION);
+                endTurn();
+            }, ANIMATION_DURATION + 50); // Add slight delay after animation
         }
     }, [
         winner,
@@ -430,8 +481,7 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
         players,
         currentPlayerIndex,
         topOfDiscard,
-        deck,
-        reshuffleDeck,
+        drawCardFromDeck, // Use the updated draw function
         applyCardEffect,
         endTurn,
     ]);
@@ -440,10 +490,17 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
      * Handles the human player clicking the "UNO!" button.
      */
     const callUno = () => {
-        if (players[0]?.hand.length === 2) {
+        // Allow calling UNO if hand count will be 1 *after* playing a card
+        // Or if it's currently 2 and they intend to play one.
+        // Simplest check: allow if hand count is 2.
+        if (players[0]?.hand.length === 2 && isPlayerTurn) {
             setGameMessage("UNO!");
             setPlayerCalledUno(true);
-            setIsUnoState(true);
+            // Clear message after a bit
+            setTimeout(() => setGameMessage(null), 1500);
+        } else {
+            setGameMessage("You can only call UNO when you have 2 cards!");
+            setTimeout(() => setGameMessage(null), 1500);
         }
     };
 
@@ -453,6 +510,8 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
      */
     const selectColor = (color: Color) => {
         if (playedWildCard) {
+            // The applyCardEffect needs the *original* black card reference
+            // But we update the discard pile with the *colored* version inside applyCardEffect
             applyCardEffect(playedWildCard, color);
             setIsColorPickerOpen(false);
             setPlayedWildCard(null);
@@ -469,12 +528,16 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
 
         const newPlayers: Player[] = [];
         for (let i = 0; i < numPlayers; i++) {
-            const { drawn, remaining } = drawCards(
-                currentDeck,
-                i === 0 ? settings.playerCards : settings.computerCards
-            );
+            // Determine card count based on difficulty (example: player 0 gets fewer on hard)
+            let cardCount = 7; // Default
+            if (i === 0 && difficulty === 'hard') cardCount = 5;
+            // if(i !== 0 && difficulty === 'easy') cardCount = 5; // Example: Make AI easier
+
+            const { drawn, remaining } = drawCards(currentDeck, cardCount);
             newPlayers.push({
                 id: i,
+                uid: `player-${i}`, // Use simple ID for local game
+                name: i === 0 ? "You" : `Player ${i + 1}`,
                 hand: drawn,
                 isComputer: i !== 0,
             });
@@ -484,12 +547,17 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
         // Start discard pile with a non-wild card
         let firstCard: Card;
         do {
+            if (currentDeck.length === 0) {
+                console.error("Ran out of cards setting up discard pile!");
+                // Handle this edge case - maybe just use a default card?
+                firstCard = { color: 'red', value: '1' }; // Fallback
+                break;
+            }
             const { drawn, remaining } = drawCards(currentDeck, 1);
             firstCard = drawn[0];
             currentDeck = remaining;
         } while (
-            firstCard.value === "wild" ||
-            firstCard.value === "wild-draw-four"
+            firstCard.color === "black"
         );
 
         setDiscardPile([firstCard]);
@@ -498,7 +566,6 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
         setCurrentPlayerIndex(0);
         setPlayDirection(1);
         setWinner(null);
-        setIsUnoState(false);
         setPlayerCalledUno(false);
         setIsColorPickerOpen(false);
         setPlayedWildCard(null);
@@ -512,14 +579,42 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
 
     // Effect to trigger the computer's turn
     useEffect(() => {
-        if (players[currentPlayerIndex]?.isComputer && !winner && !animatedCard) {
+        // Only trigger if it's computer's turn, game is playing, no winner, and no animation running
+        if (
+            gameMessage !== 'Game started!' && // Avoid triggering on initial load message
+            players[currentPlayerIndex]?.isComputer &&
+            !winner &&
+            !animatedCard &&
+            !isColorPickerOpen // Don't run if human needs to pick color
+        ) {
             const timer = setTimeout(() => {
                 computerTurnLogic();
-            }, 1000); // 1-second delay for the computer to "think"
+            }, 1000 + Math.random() * 500); // Add slight random delay
 
             return () => clearTimeout(timer);
         }
-    }, [currentPlayerIndex, winner, players, animatedCard, computerTurnLogic]);
+    }, [currentPlayerIndex, winner, players, animatedCard, computerTurnLogic, isColorPickerOpen, gameMessage]);
+
+
+    // Effect to auto-clear game messages
+    useEffect(() => {
+        if (gameMessage) {
+            const timer = setTimeout(() => {
+                // Avoid clearing critical messages like winner announcement or color choice prompt
+                if (!winner && !isColorPickerOpen) {
+                    // Keep UNO! message slightly longer
+                    if (gameMessage !== 'UNO!') {
+                        setGameMessage(null);
+                    } else {
+                        setTimeout(() => setGameMessage(null), 2500);
+                    }
+                }
+
+            }, 2000); // Clear after 2 seconds generally
+            return () => clearTimeout(timer);
+        }
+    }, [gameMessage, winner, isColorPickerOpen]);
+
 
     return {
         // Game State
@@ -530,8 +625,7 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
         currentPlayerIndex,
         winner,
         isColorPickerOpen,
-        isUnoState,
-        playerCalledUno,
+        playerCalledUno, // Whether player successfully called it this turn
         gameMessage,
         animatedCard,
         isPlayerTurn,
@@ -542,6 +636,6 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
         callUno,
         selectColor,
         startGame,
-        setGameMessage,
+        // setGameMessage, // Removed direct expose, handled internally
     };
 }
