@@ -1,5 +1,5 @@
 import { CSSProperties } from "react";
-import type { Card } from "./game/game-types"; // Import Card from the new types file
+import type { Card } from "./game-logic";
 
 interface CardProps {
   card: Card;

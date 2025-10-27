@@ -6,10 +6,10 @@ import {
     shuffleDeck,
     drawCards,
     isCardPlayable,
-    Card, // Import Card directly
+    Card, // Keep this import from game-logic
 } from "../game-logic"; // Correct path to game-logic
-import type { Player, Color, Difficulty, AnimatedCard } from "./game-types"; // Correct path
-import { difficultySettings } from "./game-types"; // Correct path
+import type { Player, Color, Difficulty, AnimatedCard } from "../game/game-types";
+import { difficultySettings } from "../game/game-types";
 
 const ANIMATION_DURATION = 500; // ms
 

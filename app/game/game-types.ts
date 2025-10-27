@@ -1,12 +1,4 @@
-import type { Card as CardData } from "../game-logic";
-
-// Re-exporting the Card type from game-logic
-export type Card = CardData;
-
-/**
- * Represents a player in the game.
- * UID links to their Firebase Auth user.
- */
+import type { Card } from "../game-logic";
 export interface Player {
     id: number; // Player order (0, 1, 2, 3) - Assigned when game starts
     uid: string; // Firebase Auth User ID
