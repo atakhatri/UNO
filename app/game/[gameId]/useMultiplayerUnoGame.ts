@@ -62,7 +62,9 @@ export function useMultiplayerUnoGame(gameId: string) {
 
                     // Check if *I* need to choose a color
                     setIsAwaitingColorChoice(
-                        isMyTurnNow && topCard?.color === "black" && !gameData.chosenColor
+                        // Add Boolean() or !! around the expression
+                        Boolean(isMyTurnNow && topCard?.color === "black" && !gameData.chosenColor)
+                        // Or alternatively: !!(isMyTurnNow && topCard?.color === "black" && !gameData.chosenColor)
                     );
 
                     // If it just became my turn, reset the local UNO button state
