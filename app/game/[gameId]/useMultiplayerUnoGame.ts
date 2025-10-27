@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 // Correct path assuming game-types is inside app/game/
-import { GameState, Player, Card, Color } from "../game-types";
+import { GameState, Player, Color } from "../game-types";
+import type { Card } from "../../game-logic";
 import {
     createDeck,
     shuffleDeck,

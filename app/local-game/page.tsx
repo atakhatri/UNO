@@ -8,8 +8,7 @@ import {
   Difficulty,
   cardBackDesigns,
   difficultyDisplay,
-  Color, // Import Color
-  Card, // Import Card
+  Color, // Import Color // Import Card
 } from "../game/game-types"; // Correct path
 import { useUnoGame } from "./useUnoGame"; // Correct path
 

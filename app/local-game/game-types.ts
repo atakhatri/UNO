@@ -12,6 +12,7 @@ export interface Player {
     uid: string; // Firebase Auth User ID
     name: string; // Display name
     hand: Card[];
+    isComputer?: boolean; // Flag for AI players in local games
 }
 
 /**
@@ -74,4 +75,3 @@ export const difficultyDisplay = {
     medium: { label: "Medium", bg: "bg-yellow-500" },
     hard: { label: "Hard", bg: "bg-red-600" },
 };
-

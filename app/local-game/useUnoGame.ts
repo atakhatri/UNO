@@ -8,8 +8,8 @@ import {
     isCardPlayable,
     Card, // Keep this import from game-logic
 } from "../game-logic"; // Correct path to game-logic
-import type { Player, Color, Difficulty, AnimatedCard } from "../game/game-types";
-import { difficultySettings } from "../game/game-types";
+import type { Player, Color, Difficulty, AnimatedCard } from "./game-types";
+import { difficultySettings } from "./game-types";
 
 const ANIMATION_DURATION = 500; // ms
 
