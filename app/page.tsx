@@ -3,10 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FaTimes } from "react-icons/fa";
-import { getUserId, getGameDocRef, setDoc, getDoc } from "./lib/firebase";
+import { getDoc, setDoc, updateDoc, arrayUnion } from "firebase/firestore";
+import { db, getGameDocRef, getUserId } from "./lib/firebase";
 import { createDeck, drawCards, shuffleDeck } from "./game-logic";
 import { GameState, Player } from "./game/game-types";
-import { DocumentReference, DocumentData } from "firebase/firestore";
 
 export default function Home() {
   const router = useRouter();
@@ -241,13 +241,4 @@ export default function Home() {
       )}
     </main>
   );
-}
-function updateDoc(
-  gameDocRef: DocumentReference<DocumentData, DocumentData>,
-  arg1: { players: any; deck: any[]; gameMessage: string }
-) {
-  throw new Error("Function not implemented.");
-}
-function arrayUnion(newPlayer: Player): any {
-  throw new Error("Function not implemented.");
 }

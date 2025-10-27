@@ -1,37 +1,49 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import {
-    auth,
-    getGameDocRef,
-    onSnapshot,
-    getUserId,
-    updateDoc,
-    setDoc,
-} from "@/app/lib/firebase";
+import { useState, useEffect } from "react";
+import { GameState, Player, Card } from "../game-types";
 import {
     createDeck,
     shuffleDeck,
     drawCards,
     isCardPlayable,
-} from "@/app/game-logic";
-import type { GameState, Player, Card, Color } from "../game-types";
+} from "../../game-logic";
+import { db, getUserId, getGameDocRef } from "../../lib/firebase";
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 
-// This hook manages the *entire* game state by subscribing to Firestore
+/**
+ * This is the main hook that manages the multiplayer game state.
+ * It listens for changes in Firestore and provides functions to update the game.
+ */
 export function useMultiplayerUnoGame(gameId: string) {
     const [game, setGame] = useState<GameState | null>(null);
-    const [userId, setUserId] = useState<string | null>(auth.currentUser?.uid || null);
+    // ▼▼▼ THIS IS THE FIX ▼▼▼
+    // We initialize userId as 'null'. The useEffect below will set it
+    // once Firebase auth is ready.
+    const [userId, setUserId] = useState<string | null>(null);
+    // ▲▲▲ THIS IS THE FIX ▲▲▲
     const [error, setError] = useState<string | null>(null);
 
     // Get and set the current user ID
     useEffect(() => {
-        getUserId().then(setUserId);
+        const fetchUser = async () => {
+            try {
+                // getUserId() waits for auth to be ready and returns the uid
+                const uid = await getUserId();
+                setUserId(uid);
+            } catch (err) {
+                console.error("Auth error:", err);
+                setError("Failed to get user ID.");
+            }
+        };
+        fetchUser();
     }, []);
 
-    // Subscribe to the game document in Firestore
+    // Set up the real-time listener for the game document
     useEffect(() => {
+        // We can't listen to a game doc if we don't know the gameId
         if (!gameId) return;
-        console.log(`Subscribing to game: ${gameId}`);
+
         const gameDocRef = getGameDocRef(gameId);
 
         const unsubscribe = onSnapshot(
@@ -39,252 +51,244 @@ export function useMultiplayerUnoGame(gameId: string) {
             (doc) => {
                 if (doc.exists()) {
                     const gameData = doc.data() as GameState;
-                    console.log("Received game state update:", gameData);
                     setGame(gameData);
+                    setError(null);
                 } else {
-                    setError("Game not found.");
-                    console.error("Game document does not exist:", gameId);
+                    setError("Game not found. It may have been deleted.");
+                    setGame(null);
                 }
             },
             (err) => {
                 console.error("Firestore snapshot error:", err);
-                setError("Error connecting to game.");
+                setError("Failed to listen to game updates.");
             }
         );
 
-        // Clean up subscription on unmount
+        // Cleanup: remove the listener when the component unmounts
         return () => unsubscribe();
     }, [gameId]);
 
     // --- Game Actions ---
-    // These functions compute the *next* state and write it to Firestore.
-    // The local state will then update via the `onSnapshot` listener.
+    // These functions are called by the UI. They calculate the new
+    // game state and then update the *entire* game doc in Firestore.
 
     /**
-     * Reshuffles the discard pile back into the deck
-     */
-    const reshuffleDeck = (
-        currentDeck: Card[],
-        currentDiscardPile: Card[]
-    ): Card[] => {
-        console.log("Reshuffling deck...");
-        const topCard = currentDiscardPile[currentDiscardPile.length - 1];
-        const restOfPile = currentDiscardPile.slice(0, -1);
-        const newDeck = shuffleDeck(restOfPile);
-
-        // Update the game state with the new deck and cleared discard pile
-        // This is a partial update, so we use `updateDoc`
-        const gameDocRef = getGameDocRef(gameId);
-        updateDoc(gameDocRef, {
-            deck: newDeck,
-            discardPile: [topCard],
-            gameMessage: "Deck was reshuffled!",
-        });
-
-        return newDeck;
-    };
-
-    /**
-     * Draws cards for a specific player and updates the game state
-     */
-    const drawCardsForPlayer = async (
-        playerIndex: number,
-        count: number,
-        currentState: GameState
-    ) => {
-        let { deck, players } = currentState;
-
-        if (deck.length < count) {
-            deck = reshuffleDeck(deck, currentState.discardPile);
-        }
-
-        const { drawn, remaining } = drawCards(deck, count);
-        const updatedHand = [...players[playerIndex].hand, ...drawn];
-        const updatedPlayers = players.map((p, i) =>
-            i === playerIndex ? { ...p, hand: updatedHand } : p
-        );
-
-        return {
-            deck: remaining,
-            players: updatedPlayers,
-        };
-    };
-
-    /**
-     * Starts the game (callable only by the host)
+     * Called by the host to start the game.
      */
     const startGame = async () => {
-        if (!game || !userId || game.hostId !== userId) return;
+        if (!game || !game.players.every((p) => p.uid) || game.status !== "waiting")
+            return;
 
-        if (game.status === "waiting") {
-            console.log("Host is starting the game...");
+        try {
+            const settings =
+                game.difficulty === "easy"
+                    ? { playerCards: 5, computerCards: 7 } // Just an example, logic is per-player
+                    : { playerCards: 7, computerCards: 7 };
+
+            let currentDeck = shuffleDeck(createDeck());
+            const newPlayers: Player[] = [];
+
+            // Deal cards to each player
+            for (const player of game.players) {
+                const { drawn, remaining } = drawCards(currentDeck, 7); // 7 cards each
+                newPlayers.push({
+                    ...player,
+                    hand: drawn,
+                });
+                currentDeck = remaining;
+            }
+
+            // Start discard pile
+            let firstCard: Card;
+            let remainingDeck: Card[];
+            do {
+                const { drawn, remaining } = drawCards(currentDeck, 1);
+                firstCard = drawn[0];
+                remainingDeck = remaining;
+                currentDeck = remaining;
+                // No wild cards to start
+            } while (firstCard.color === "black");
+
+            // Update the entire game doc in Firestore
             const gameDocRef = getGameDocRef(gameId);
             await updateDoc(gameDocRef, {
                 status: "playing",
-                gameMessage: "The game has started!",
+                players: newPlayers,
+                deck: currentDeck,
+                discardPile: [firstCard],
+                currentPlayerIndex: 0,
+                playDirection: 1,
             });
+        } catch (err) {
+            console.error("Error starting game:", err);
+            setError("Failed to start the game.");
         }
     };
 
     /**
-     * Handles a player playing a card
+     * Called when the current player plays a card.
      */
-    const playCard = async (card: Card, handIndex: number) => {
+    const playCard = async (card: Card, cardIndex: number) => {
         if (!game || !userId || game.status !== "playing") return;
-
-        const currentPlayer = game.players[game.currentPlayerIndex];
-        if (currentPlayer.uid !== userId) {
-            // Not this player's turn
-            return;
+        if (game.players[game.currentPlayerIndex].uid !== userId) {
+            return setError("It's not your turn!");
         }
 
         const topOfDiscard = game.discardPile[game.discardPile.length - 1];
-        const playableColor = game.chosenColor || topOfDiscard.color;
-
-        // Modify isCardPlayable check for wild cards
-        const effectiveTopOfDiscard = { ...topOfDiscard, color: playableColor };
-        if (!isCardPlayable(card, effectiveTopOfDiscard)) {
-            console.log("Invalid card played");
-            // Optionally set a temporary local message
-            return;
+        if (!isCardPlayable(card, topOfDiscard)) {
+            return setError("You can't play that card!");
         }
 
-        console.log(`Player ${userId} is playing card:`, card);
+        // --- 1. Update local state immediately for responsiveness (optional but nice)
+        // We'll skip this for now to keep the logic simpler.
+        // The "source of truth" will be the next Firestore snapshot.
 
-        // This is the core logic. We compute the *entire* next state.
-        let nextState: Partial<GameState> = {};
-        const newHand = [...currentPlayer.hand];
-        newHand.splice(handIndex, 1);
+        // --- 2. Calculate the next game state
+        try {
+            const currentPlayer = game.players[game.currentPlayerIndex];
+            const newHand = [...currentPlayer.hand];
+            newHand.splice(cardIndex, 1);
 
-        const newPlayers = game.players.map((p) =>
-            p.uid === userId ? { ...p, hand: newHand } : p
-        );
+            let newDiscardPile = [...game.discardPile, card];
+            let newDeck = [...game.deck];
+            let newPlayers = [...game.players];
+            newPlayers[game.currentPlayerIndex] = { ...currentPlayer, hand: newHand };
+            let newPlayDirection = game.playDirection;
+            let newCurrentPlayerIndex = game.currentPlayerIndex;
 
-        nextState.players = newPlayers;
-        nextState.discardPile = [...game.discardPile, card];
-
-        // Handle winning condition
-        if (newHand.length === 0) {
-            nextState.status = "finished";
-            nextState.winnerId = userId;
-            nextState.gameMessage = `${currentPlayer.name} has won!`;
-            const gameDocRef = getGameDocRef(gameId);
-            await updateDoc(gameDocRef, nextState);
-            return;
-        }
-
-        // Handle UNO call
-        if (newHand.length === 1) {
-            // In a real game, you'd check if they *failed* to call UNO.
-            // For simplicity, we just announce it.
-            nextState.gameMessage = `${currentPlayer.name} shouts UNO!`;
-        } else {
-            nextState.gameMessage = `${currentPlayer.name} played a ${card.color} ${card.value}.`;
-        }
-
-        // Handle card effects
-        let skip = 1;
-        let nextPlayerIndex = (game.currentPlayerIndex + game.playDirection * skip + game.players.length) % game.players.length;
-
-        if (card.color === "black") {
-            // Don't end turn yet, wait for color choice
-            nextState.chosenColor = null; // Mark that we need a color
-        } else {
-            nextState.chosenColor = null; // Reset chosen color
-
-            switch (card.value) {
-                case "draw-two":
-                    const drawTwoResult = await drawCardsForPlayer(nextPlayerIndex, 2, { ...game, ...nextState });
-                    nextState.players = drawTwoResult.players;
-                    nextState.deck = drawTwoResult.deck;
-                    skip = 2; // Skip the player who drew
-                    nextState.gameMessage = `${currentPlayer.name} played a Draw Two! ${game.players[nextPlayerIndex].name} draws 2.`;
-                    break;
-                case "skip":
-                    skip = 2; // Skip the next player
-                    nextState.gameMessage = `${currentPlayer.name} skipped ${game.players[nextPlayerIndex].name}!`;
-                    break;
-                case "reverse":
-                    if (game.players.length === 2) {
-                        skip = 2; // Acts like a skip
-                    } else {
-                        nextState.playDirection = (game.playDirection * -1) as 1 | -1;
-                    }
-                    nextState.gameMessage = `${currentPlayer.name} reversed the direction!`;
-                    break;
+            let winner: Player | null = null;
+            if (newHand.length === 0) {
+                winner = currentPlayer;
             }
 
-            nextState.currentPlayerIndex = (game.currentPlayerIndex + nextState.playDirection! * skip + game.players.length) % game.players.length;
-        }
+            // --- 3. Handle Card Effects ---
+            let nextPlayerIndex =
+                (game.currentPlayerIndex + game.playDirection + game.players.length) %
+                game.players.length;
 
-        const gameDocRef = getGameDocRef(gameId);
-        await updateDoc(gameDocRef, nextState);
+            // TODO: Implement Wild card color picking
+            // For now, we'll auto-pick a color or just pass the turn.
+            // This is a major piece of logic to add next.
+            if (card.color === "black") {
+                // *** This is a placeholder! ***
+                // You need to open a color picker modal and get this color.
+                const chosenColor: Card["color"] = "blue"; // <-- Placeholder!
+                card.color = chosenColor; // Mutate the card in the discard pile
+                newDiscardPile[newDiscardPile.length - 1] = card;
+
+                if (card.value === "wild-draw-four") {
+                    const { drawn, remaining } = drawCards(newDeck, 4);
+                    newDeck = remaining;
+                    newPlayers[nextPlayerIndex] = {
+                        ...newPlayers[nextPlayerIndex],
+                        hand: [...newPlayers[nextPlayerIndex].hand, ...drawn],
+                    };
+                    newCurrentPlayerIndex =
+                        (nextPlayerIndex + game.playDirection + game.players.length) %
+                        game.players.length; // Skip next player
+                } else {
+                    // Regular wild
+                    newCurrentPlayerIndex = nextPlayerIndex;
+                }
+            } else if (card.value === "draw-two") {
+                const { drawn, remaining } = drawCards(newDeck, 2);
+                newDeck = remaining;
+                newPlayers[nextPlayerIndex] = {
+                    ...newPlayers[nextPlayerIndex],
+                    hand: [...newPlayers[nextPlayerIndex].hand, ...drawn],
+                };
+                newCurrentPlayerIndex =
+                    (nextPlayerIndex + game.playDirection + game.players.length) %
+                    game.players.length; // Skip next player
+            } else if (card.value === "skip") {
+                newCurrentPlayerIndex =
+                    (nextPlayerIndex + game.playDirection + game.players.length) %
+                    game.players.length; // Skip next player
+            } else if (card.value === "reverse") {
+                newPlayDirection = (game.playDirection * -1) as 1 | -1;
+                newCurrentPlayerIndex =
+                    (game.currentPlayerIndex + newPlayDirection + game.players.length) %
+                    game.players.length;
+            } else {
+                // Normal number card
+                newCurrentPlayerIndex = nextPlayerIndex;
+            }
+
+            // --- 4. Update Firestore ---
+            const gameDocRef = getGameDocRef(gameId);
+            await updateDoc(gameDocRef, {
+                players: newPlayers,
+                deck: newDeck,
+                discardPile: newDiscardPile,
+                currentPlayerIndex: newCurrentPlayerIndex,
+                playDirection: newPlayDirection,
+                status: winner ? "finished" : "playing",
+                winner: winner ? winner.name : null,
+            });
+        } catch (err) {
+            console.error("Error playing card:", err);
+            setError("Failed to play card.");
+        }
     };
 
     /**
-     * Handles the current player drawing a card from the deck
+     * Called when the current player draws a card.
      */
     const drawCard = async () => {
         if (!game || !userId || game.status !== "playing") return;
-        const currentPlayer = game.players[game.currentPlayerIndex];
-        if (currentPlayer.uid !== userId) return; // Not your turn
-
-        console.log(`Player ${userId} is drawing a card...`);
-
-        const drawResult = await drawCardsForPlayer(game.currentPlayerIndex, 1, game);
-
-        const nextState: Partial<GameState> = {
-            ...drawResult,
-            currentPlayerIndex: (game.currentPlayerIndex + game.playDirection + game.players.length) % game.players.length,
-            gameMessage: `${currentPlayer.name} drew a card.`,
-        };
-
-        const gameDocRef = getGameDocRef(gameId);
-        await updateDoc(gameDocRef, nextState);
-    };
-
-    /**
-     * Handles setting the color after playing a Wild card
-     */
-    const selectColor = async (color: Color) => {
-        if (!game || !userId || game.status !== "playing") return;
-        const currentPlayer = game.players[game.currentPlayerIndex];
-        if (currentPlayer.uid !== userId) return; // Not your turn
-
-        const topOfDiscard = game.discardPile[game.discardPile.length - 1];
-        if (topOfDiscard.color !== "black") return; // Not a wild card
-
-        console.log(`Player ${userId} selected color: ${color}`);
-
-        let nextState: Partial<GameState> = {
-            chosenColor: color,
-            gameMessage: `${currentPlayer.name} chose ${color}.`
-        };
-        let skip = 1;
-        let nextPlayerIndex = (game.currentPlayerIndex + game.playDirection * skip + game.players.length) % game.players.length;
-
-        if (topOfDiscard.value === "wild-draw-four") {
-            const drawFourResult = await drawCardsForPlayer(nextPlayerIndex, 4, game);
-            nextState.players = drawFourResult.players;
-            nextState.deck = drawFourResult.deck;
-            skip = 2; // Skip the player who drew
-            nextState.gameMessage = `${currentPlayer.name} played a Wild Draw Four! ${color} is chosen. ${game.players[nextPlayerIndex].name} draws 4.`;
+        if (game.players[game.currentPlayerIndex].uid !== userId) {
+            return setError("It's not your turn!");
         }
 
-        nextState.currentPlayerIndex = (game.currentPlayerIndex + game.playDirection * skip + game.players.length) % game.players.length;
+        try {
+            let currentDeck = [...game.deck];
+            let currentDiscardPile = [...game.discardPile];
 
-        const gameDocRef = getGameDocRef(gameId);
-        await updateDoc(gameDocRef, nextState);
+            // Reshuffle discard pile if deck is empty
+            if (currentDeck.length === 0) {
+                const topCard = currentDiscardPile.pop()!;
+                currentDeck = shuffleDeck(currentDiscardPile);
+                currentDiscardPile = [topCard];
+            }
+
+            const { drawn, remaining } = drawCards(currentDeck, 1);
+            const newDeck = remaining;
+            const drawnCard = drawn[0];
+
+            const currentPlayer = game.players[game.currentPlayerIndex];
+            const newHand = [...currentPlayer.hand, drawnCard];
+
+            const newPlayers = [...game.players];
+            newPlayers[game.currentPlayerIndex] = { ...currentPlayer, hand: newHand };
+
+            // Pass the turn
+            const newCurrentPlayerIndex =
+                (game.currentPlayerIndex + game.playDirection + game.players.length) %
+                game.players.length;
+
+            const gameDocRef = getGameDocRef(gameId);
+            await updateDoc(gameDocRef, {
+                players: newPlayers,
+                deck: newDeck,
+                discardPile: currentDiscardPile, // In case it was reshuffled
+                currentPlayerIndex: newCurrentPlayerIndex,
+            });
+        } catch (err) {
+            console.error("Error drawing card:", err);
+            setError("Failed to draw card.");
+        }
     };
 
-    // Expose game state and actions
+    // Return the game state and functions to the component
     return {
         game,
         userId,
         error,
-        startGame,
-        playCard,
-        drawCard,
-        selectColor,
+        actions: {
+            startGame,
+            playCard,
+            drawCard,
+        },
     };
 }
+

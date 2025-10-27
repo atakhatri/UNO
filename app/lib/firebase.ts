@@ -131,9 +131,4 @@ export {
     db,
     auth,
     authReadyPromise,
-    onSnapshot,
-    getDoc,
-    setDoc,
-    updateDoc,
-    arrayUnion,
 };
