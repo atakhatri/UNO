@@ -318,13 +318,6 @@ function Game() {
                     ? "opacity-60 cursor-not-allowed" // Visually disable card if not playable now
                     : ""
                 }
-                title={
-                  !isPlayerTurn
-                    ? "Not your turn"
-                    : isAwaitingColorChoice
-                    ? "Choose a color"
-                    : `Play ${card.value} ${card.color}`
-                }
               />
             ))}
           </div>
