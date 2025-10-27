@@ -265,7 +265,7 @@ export function useMultiplayerUnoGame(gameId: string) {
 
             // Start discard pile
             let firstCard: Card | null = null; // Initialize as null
-            let discardPileSetup = []; // Start empty
+            let discardPileSetup: Card[] = [];
             do {
                 if (currentDeck.length === 0) {
                     // Attempt reshuffle only if discardPileSetup has cards (unlikely here but safe)
