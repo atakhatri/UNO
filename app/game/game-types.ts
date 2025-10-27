@@ -1,6 +1,6 @@
 import type { Card } from "../game-logic";
 export interface Player {
-    id: number; // Player order (0, 1, 2, 3) - Assigned when game starts
+    id?: number; // Player order (0, 1, 2, 3) - Assigned when game starts
     uid: string; // Firebase Auth User ID
     name: string; // Display name
     hand: Card[];
