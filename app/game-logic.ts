@@ -1,22 +1,6 @@
-export interface Card {
-    color: "red" | "green" | "blue" | "yellow" | "black";
-    value:
-    | "0"
-    | "1"
-    | "2"
-    | "3"
-    | "4"
-    | "5"
-    | "6"
-    | "7"
-    | "8"
-    | "9"
-    | "skip"
-    | "reverse"
-    | "draw-two"
-    | "wild"
-    | "wild-draw-four";
-}
+import type { Card } from "./game/game-types"; // Import Card from the new types file
+
+export type { Card }; // Re-export Card type
 
 export const createDeck = (): Card[] => {
     const colors: Card["color"][] = ["red", "green", "blue", "yellow"];
@@ -70,7 +54,10 @@ export const drawCards = (deck: Card[], count: number) => {
 };
 
 export const isCardPlayable = (card: Card, topOfDiscard: Card): boolean => {
-    if (!topOfDiscard) return true; // Should not happen after first card is played
+    if (!topOfDiscard) return true; // Can play any card to start the pile (though this is handled by startGame)
     if (card.color === "black") return true; // Wild cards are always playable
-    return card.color === topOfDiscard.color || card.value === topOfDiscard.value;
+    if (topOfDiscard.color === "black") return true; // Any card can be played on a chosen wild
+    return (
+        card.color === topOfDiscard.color || card.value === topOfDiscard.value
+    );
 };

@@ -1,5 +1,5 @@
 import { CSSProperties } from "react";
-import type { Card } from "./game-logic";
+import type { Card } from "./game/game-types"; // Import Card from the new types file
 
 interface CardProps {
   card: Card;
@@ -30,7 +30,7 @@ export const CardComponent = ({
   // Build display text for corners and center based on the card value.
   // If the card has a `value` property it will be used; otherwise we map some common action names.
   const display = (() => {
-    const v = (card as any).value ?? "";
+    const v = card.value;
 
     if (v === "skip") return { corners: "⤫", center: "Skip" };
     if (v === "reverse") return { corners: "↺", center: "Rev" };
@@ -62,7 +62,7 @@ export const CardComponent = ({
             ? "cursor-pointer hover:scale-105 hover:-translate-y-2 transition-all duration-200"
             : ""
         } 
-        ${className}}
+        ${className || ""}
       `}
       disabled={!onClick}
     >
