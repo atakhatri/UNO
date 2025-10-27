@@ -7,11 +7,12 @@ import { Suspense, useEffect, useState } from "react";
 // Correct path assuming game-types is inside app/game/
 import {
   Color,
-  Card,
+  // Card, // <-- REMOVE Card from here
   cardBackDesigns,
   difficultyDisplay,
   Difficulty, // Import Difficulty
 } from "../game-types";
+import type { Card } from "../../game-logic"; // <-- ADD this line to import Card correctly
 import { useMultiplayerUnoGame } from "./useMultiplayerUnoGame";
 
 function Game() {
