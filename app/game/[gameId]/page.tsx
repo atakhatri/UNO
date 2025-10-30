@@ -1,19 +1,41 @@
 "use client";
 
-import { FaCog, FaTimes } from "react-icons/fa";
+import { FaCog, FaTimes, FaPaperPlane } from "react-icons/fa"; // Added FaPaperPlane
 import { CardComponent } from "@/app/Card"; // Use alias if configured
 import { useRouter, useParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 // Correct path assuming game-types is inside app/game/
 import {
   Color,
-  // Card, // <-- REMOVE Card from here
   cardBackDesigns,
   difficultyDisplay,
-  Difficulty, // Import Difficulty
+  Difficulty,
+  Player,
+  // Import Player
 } from "../game-types";
 import type { Card } from "../../game-logic"; // <-- ADD this line to import Card correctly
 import { useMultiplayerUnoGame } from "./useMultiplayerUnoGame";
+
+// --- NEW ---
+// Import firebase functions needed for friend invites
+import {
+  getUserDocRef,
+  getDoc,
+  sendGameInvite,
+  User,
+} from "../../lib/firebase";
+
+// Define User Profile type (can be moved to a shared types file)
+interface UserProfile {
+  id: string;
+  uid: string;
+  displayName: string;
+  email: string;
+  friends: string[];
+  pendingRequests: string[];
+  sentRequests: string[];
+}
+// --- END NEW ---
 
 function Game() {
   const router = useRouter();
@@ -32,7 +54,7 @@ function Game() {
     playCard,
     drawCard,
     selectColor,
-    callUno, // Get the new callUno function
+    callUno,
   } = useMultiplayerUnoGame(gameId);
   // ===========================================
 
@@ -41,9 +63,13 @@ function Game() {
   const [cardBack, setCardBack] =
     useState<keyof typeof cardBackDesigns>("default");
   const [localMessage, setLocalMessage] = useState<string | null>(null);
-  // Track if UNO button was clicked this turn for visual feedback
   const [unoButtonClickedThisTurn, setUnoButtonClickedThisTurn] =
     useState(false);
+
+  // --- NEW Invite State ---
+  const [friendsDetails, setFriendsDetails] = useState<UserProfile[]>([]);
+  const [sentInvites, setSentInvites] = useState<string[]>([]); // Track sent invites for this session
+  // --- END NEW Invite State ---
 
   // Effect to clear local messages
   useEffect(() => {
@@ -62,11 +88,36 @@ function Game() {
       userId &&
       game.players[game.currentPlayerIndex]?.uid === userId
     ) {
-      // Check if the index *actually* changed or if it's the start of the turn
-      // A simple reset on becoming the current player is usually sufficient
       setUnoButtonClickedThisTurn(false);
     }
-  }, [game?.currentPlayerIndex, userId, game?.players]); // Depend on turn index and user ID
+  }, [game?.currentPlayerIndex, userId, game?.players]);
+
+  // --- NEW Effect to fetch friends for invite list ---
+  useEffect(() => {
+    if (userId && game?.status === "waiting") {
+      const fetchFriends = async () => {
+        const userDocRef = getUserDocRef(userId);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          const data = userDoc.data() as UserProfile;
+          if (data.friends && data.friends.length > 0) {
+            const friendPromises = data.friends.map(async (friendId) => {
+              const friendDoc = await getDoc(getUserDocRef(friendId));
+              return friendDoc.exists()
+                ? ({ ...friendDoc.data(), id: friendDoc.id } as UserProfile)
+                : null;
+            });
+            const friends = (await Promise.all(friendPromises)).filter(
+              Boolean
+            ) as UserProfile[];
+            setFriendsDetails(friends);
+          }
+        }
+      };
+      fetchFriends();
+    }
+  }, [userId, game?.status]); // Re-fetch if user or game status changes
+  // --- END NEW Effect ---
 
   // --- Render Loading/Error States ---
   if (error) {
@@ -84,7 +135,6 @@ function Game() {
     );
   }
 
-  // Show detailed loading state while game/user data is initially fetched
   if (!game || !userId) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white text-xl">
@@ -94,10 +144,10 @@ function Game() {
   }
 
   // --- Derived State (Calculated from `game` state) ---
+  const user = game.players.find((p) => p.uid === userId);
   const player = game.players.find((p) => p.uid === userId);
   const opponents = game.players.filter((p) => p.uid !== userId);
 
-  // Safely access topOfDiscard
   const topOfDiscard =
     game.discardPile && game.discardPile.length > 0
       ? game.discardPile[game.discardPile.length - 1]
@@ -110,7 +160,6 @@ function Game() {
   const currentTurnPlayerName =
     game.players[game.currentPlayerIndex]?.name ?? "Loading...";
 
-  // Should UNO button be visible?
   const showUnoButton =
     isPlayerTurn && player?.hand.length === 2 && !isAwaitingColorChoice;
 
@@ -149,6 +198,26 @@ function Game() {
       callUno();
       setUnoButtonClickedThisTurn(true);
       setLocalMessage("UNO!");
+    }
+  };
+
+  // --- NEW Invite Handler ---
+  const handleSendInvite = async (friendId: string) => {
+    if (!user || !player || !gameId) return;
+    try {
+      // Immediately mark as invited to disable the button
+      setSentInvites((prev) => [...prev, friendId]);
+      await sendGameInvite(user.uid, player.name, gameId, friendId);
+      setSentInvites((prev) => [...prev, friendId]); // Mark as invited
+
+      // After 5 seconds, allow the user to be invited again
+      setTimeout(() => {
+        setSentInvites((prev) => prev.filter((id) => id !== friendId));
+      }, 5000);
+    } catch (err) {
+      console.error("Error sending invite:", err);
+      // Optionally show a local error message
+      setSentInvites((prev) => prev.filter((id) => id !== friendId)); // Re-enable on error
     }
   };
 
@@ -213,9 +282,7 @@ function Game() {
         {/* Deck */}
         <div className="flex flex-col items-center order-1 md:order-none">
           <p className="text-sm md:text-base mb-1 md:mb-2 font-semibold">
-            {/* ▼▼▼ SAFE ACCESS TO game.deck.length ▼▼▼ */}
             Deck ({game.deck?.length ?? 0})
-            {/* ▲▲▲ SAFE ACCESS TO game.deck.length ▲▲▲ */}
           </p>
           <div
             className={`w-16 h-24 md:w-20 md:h-28 ${
@@ -247,11 +314,9 @@ function Game() {
             Discard
           </p>
           <div className="relative w-16 h-24 md:w-20 md:h-28">
-            {/* Use the safely accessed topOfDiscard */}
             {topOfDiscard ? (
               <CardComponent card={topOfDiscard} className="shadow-lg" />
             ) : (
-              // Show placeholder if discard pile is empty or not yet loaded
               <div className="w-full h-full rounded-lg bg-gray-700 border border-gray-500 flex items-center justify-center text-white/50 text-xs text-center">
                 Empty
               </div>
@@ -311,12 +376,12 @@ function Game() {
             )}
             {player?.hand.map((card, index) => (
               <CardComponent
-                key={`${card.color}-${card.value}-${index}-${player.hand.length}`} // Key helps React update correctly
+                key={`${card.color}-${card.value}-${index}-${player.hand.length}`}
                 card={card}
-                onClick={() => handlePlayCard(card, index)} // Uses updated handler
+                onClick={() => handlePlayCard(card, index)}
                 className={
                   !isPlayerTurn || isAwaitingColorChoice
-                    ? "opacity-60 cursor-not-allowed" // Visually disable card if not playable now
+                    ? "opacity-60 cursor-not-allowed"
                     : ""
                 }
               />
@@ -329,17 +394,17 @@ function Game() {
       {/* Waiting Lobby */}
       {game.status === "waiting" && (
         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-40 p-4">
-          <div className="bg-white/10 border border-white/20 rounded-xl p-6 md:p-8 text-center shadow-2xl max-w-md w-full">
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">
+          <div className="bg-white/10 border border-white/20 rounded-xl p-6 md:p-8 text-white shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl md:text-3xl font-bold mb-4 text-center">
               Waiting for Players...
             </h2>
-            <p className="text-lg mb-4">
+            <p className="text-lg mb-4 text-center">
               Share Game ID:{" "}
               <span className="text-yellow-300 font-bold tracking-widest">
                 {game.gameId}
               </span>
             </p>
-            <div className="mb-6 text-left max-h-40 overflow-y-auto bg-black/20 p-3 rounded">
+            <div className="mb-6 text-left bg-black/20 p-3 rounded">
               <h3 className="font-semibold mb-2">
                 Players ({game.players.length}/4):
               </h3>
@@ -351,6 +416,48 @@ function Game() {
                 ))}
               </ul>
             </div>
+
+            {/* --- NEW Invite Friends Section --- */}
+            {isHost && (
+              <div className="mb-6 text-left bg-black/20 p-3 rounded">
+                <h3 className="font-semibold mb-2">Invite Friends</h3>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {friendsDetails.length === 0 && (
+                    <p className="text-white/70 text-sm">
+                      No friends to invite. Add friends from the profile modal
+                      on the home page.
+                    </p>
+                  )}
+                  {friendsDetails.map((friend) => {
+                    const isAlreadyInGame = game.players.some(
+                      (p) => p.uid === friend.uid
+                    );
+                    const isInviteSent = sentInvites.includes(friend.id);
+                    return (
+                      <div
+                        key={friend.id}
+                        className="flex items-center justify-between"
+                      >
+                        <span className="truncate">{friend.displayName}</span>
+                        <button
+                          onClick={() => handleSendInvite(friend.id)}
+                          disabled={isAlreadyInGame || isInviteSent}
+                          className="px-3 py-1 bg-blue-600/80 rounded-lg text-sm font-semibold transition-all hover:bg-blue-500/80 disabled:bg-gray-500 disabled:opacity-70 disabled:cursor-not-allowed"
+                        >
+                          {isAlreadyInGame
+                            ? "In Game"
+                            : isInviteSent
+                            ? "Sent"
+                            : "Invite"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {/* --- END NEW Invite Friends Section --- */}
+
             {isHost && (
               <button
                 onClick={startGame}
@@ -366,7 +473,7 @@ function Game() {
               </button>
             )}
             {!isHost && (
-              <p className="text-lg text-white/80">
+              <p className="text-lg text-white/80 text-center">
                 Waiting for host (
                 {game.players.find((p) => p.uid === game.hostId)?.name ?? "..."}
                 ) to start...
@@ -430,13 +537,12 @@ function Game() {
                 <h3 className="font-semibold mb-2">Difficulty</h3>
                 <div
                   className={`w-full text-center p-2 rounded-lg font-bold text-white ${
-                    difficultyDisplay[game.difficulty as Difficulty]?.bg ?? // Use game.difficulty
+                    difficultyDisplay[game.difficulty as Difficulty]?.bg ??
                     "bg-gray-500"
                   }`}
                 >
                   {difficultyDisplay[game.difficulty as Difficulty]?.label ??
                     "Medium"}{" "}
-                  {/* Default to Medium if not set */}
                 </div>
               </div>
               {/* Card Back Design */}
