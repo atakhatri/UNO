@@ -477,7 +477,7 @@ export default function Home() {
       style={{ backgroundImage: "url('/main_bg.png')" }}
     >
       {/* Full-screen semi-transparent container */}
-      <div className="relative flex flex-col bg-black/80 w-full min-h-screen p-4 sm:p-6 md:p-8">
+      <div className="relative flex flex-col bg-black/70 w-full min-h-screen p-4 sm:p-6 md:p-8">
         {/* Header: Title + Profile */}
         <div className="flex justify-between items-center w-full mb-4 sm:mb-6">
           <h1 className="text-5xl sm:text-5xl md:text-6xl font-bold text-white tracking-[0.5rem] sm:tracking-[1rem] -mr-[0.5rem] sm:-mr-[1rem]">
@@ -607,7 +607,7 @@ export default function Home() {
               </div>
 
               {/* --- Multiplayer Sections --- */}
-              <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex flex-col md:flex-row gap-4 mb-5">
                 {/* Create Game */}
                 <div className="flex flex-col gap-4 p-4 border border-white/30 rounded-xl flex-1">
                   <h2 className="text-lg sm:text-xl text-white font-semibold text-center">
@@ -788,7 +788,9 @@ export default function Home() {
                         You are logged in as:
                         <br />
                         <strong className="text-white text-lg break-all">
-                          {user.displayName || user.email || "User"}
+                          {user.displayName ||
+                            user.email ||
+                            "Sign-out and Login again"}
                         </strong>
                       </p>
                       <button
@@ -1017,7 +1019,7 @@ export default function Home() {
                         setAuthMode(authMode === "login" ? "signup" : "login");
                         setError(null);
                       }}
-                      className="w-full text-center text-blue-400 hover:text-blue-300"
+                      className="w-full text-center text-blue-400 hover:text-blue-300 "
                     >
                       {authMode === "login"
                         ? "Need an account? Sign Up"
@@ -1033,7 +1035,7 @@ export default function Home() {
       {/* Scrolling Footer */}
       <div className="fixed bottom-0 left-0 w-full h-15 flex items-center justify-center bg-black/50 backdrop-blur-sm overflow-hidden z-50">
         <div className="py-2 animate-marquee whitespace-nowrap">
-          <span className="text-lg mx-4 text-white font-semibold flex justify-center align-middle">
+          <span className="text-lg mx-4 text-white font-semibold flex justify-center align-middle hover:text-blue-300 transition-all hover:scale-105 ">
             <Link href="https://portify-amber.vercel.app/" target="_blank">
               Created by Ata, Check out More
             </Link>
