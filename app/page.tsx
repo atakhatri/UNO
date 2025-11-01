@@ -3,20 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link"; // Import Link for navigation
 import { useRouter } from "next/navigation";
-import {
-  FaTimes,
-  FaUser,
-  FaUserFriends,
-  FaSearch,
-  FaUserPlus,
-  FaCheck,
-  FaTimesCircle,
-  FaUserClock,
-  FaUserCheck,
-  FaUserMinus,
-  FaPaperPlane, // For invites
-  FaArrowRight,
-} from "react-icons/fa"; // Added new icons
+import { FaTimes, FaArrowRight } from "react-icons/fa";
+import { Header } from "../components/Header";
 // Using relative path
 import { Player, GameState, Difficulty } from "./game/game-types";
 // Using relative path
@@ -26,13 +14,8 @@ import {
   // Import new auth functions
   auth,
   onAuthStateChanged,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  updateProfile,
   User,
   // --- Import our new function ---
-  createUserDocument,
   getUserDocRef, // Import user doc ref
   // --- Import Firestore functions ---
   getDoc,
@@ -40,14 +23,6 @@ import {
   updateDoc,
   arrayUnion,
   onSnapshot,
-  // --- Import new friend functions ---
-  searchUsers,
-  sendFriendRequest,
-  acceptFriendRequest,
-  declineFriendRequest,
-  removeFriend,
-  // --- Import invite functions ---
-  collection, // Need this for subcollection listener
   getGameInvitesCollectionRef,
   deleteGameInvite,
 } from "./lib/firebase";
@@ -80,15 +55,10 @@ export default function Home() {
   const router = useRouter();
 
   // --- Auth State ---
+  // Simplified for home page: only need user and loading status
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
-  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [playerName, setPlayerName] = useState("");
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [modalTab, setModalTab] = useState<"profile" | "friends">("profile");
 
   // --- Game State ---
   const [gameIdToJoin, setGameIdToJoin] = useState("");
@@ -97,11 +67,6 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [isHowToPlayOpen, setIsHowToPlayOpen] = useState(false);
 
-  // --- Friends State ---
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
-  const [friendSearchLoading, setFriendSearchLoading] = useState(false);
-  const [searchPerformed, setSearchPerformed] = useState(false); // To track if a search has happened
   const [friendsDetails, setFriendsDetails] = useState<UserProfile[]>([]);
   const [pendingRequestsDetails, setPendingRequestsDetails] = useState<
     UserProfile[]
@@ -115,16 +80,8 @@ export default function Home() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setUser(user);
-        setPlayerName(user.displayName || "");
-        setIsAuthModalOpen(false);
-        setError(null);
       } else {
         setUser(null);
-        setPlayerName("");
-        setUserProfile(null); // Clear profile on logout
-        if (!isAuthLoading) {
-          setIsAuthModalOpen(true);
-        }
       }
       setIsAuthLoading(false);
       setLoading(false);
@@ -179,10 +136,6 @@ export default function Home() {
           } else {
             setPendingRequestsDetails([]);
           }
-        } else {
-          if (user.displayName) {
-            createUserDocument(user, user.displayName);
-          }
         }
       });
 
@@ -207,73 +160,12 @@ export default function Home() {
     }
   }, [user]);
 
-  // --- Auth Handlers ---
-  const handleSignUp = async () => {
-    if (!email || !password || !playerName.trim()) {
-      setError("Please fill in all fields.");
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      await updateProfile(userCredential.user, {
-        displayName: playerName,
-      });
-      await createUserDocument(userCredential.user, playerName);
-
-      setUser({ ...userCredential.user, displayName: playerName });
-      setPlayerName(playerName);
-      setIsAuthModalOpen(false);
-    } catch (err: any) {
-      if (err.code === "auth/operation-not-allowed") {
-        setError(
-          "Email/Password sign-in is not enabled in your Firebase project."
-        );
-      } else {
-        setError(err.message);
-      }
-    }
-    setLoading(false);
-  };
-
-  const handleLogin = async () => {
-    if (!email || !password) {
-      setError("Please enter email and password.");
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (err: any) {
-      if (err.code === "auth/operation-not-allowed") {
-        setError(
-          "Email/Password sign-in is not enabled in your Firebase project."
-        );
-      } else {
-        setError(err.message);
-      }
-    }
-    setLoading(false);
-  };
-
-  const handleLogout = async () => {
-    setLoading(true);
-    await signOut(auth);
-    setLoading(false);
-  };
-
   // --- Game Handlers (Modified to use logged-in user) ---
   const handleCreateGame = async () => {
-    const currentDisplayName = user?.displayName || playerName;
+    const currentDisplayName = user?.displayName;
     if (!user || !currentDisplayName) {
-      setError("Please log in and set your name first.");
-      setIsAuthModalOpen(true);
+      setError("Please log in to create a game."); // Redirect to profile page to login
+      router.push("/profile");
       return;
     }
     setLoading(true);
@@ -307,10 +199,10 @@ export default function Home() {
   const handleJoinGame = async (inviteGameId?: string) => {
     const gameId = inviteGameId || gameIdToJoin; // Use invite ID if provided
 
-    const currentDisplayName = user?.displayName || playerName;
+    const currentDisplayName = user?.displayName;
     if (!user || !currentDisplayName) {
-      setError("Please log in and set your name first.");
-      setIsAuthModalOpen(true);
+      setError("Please log in to join a game."); // Redirect to profile page to login
+      router.push("/profile");
       return;
     }
     if (!gameId || gameId.length !== 6) {
@@ -379,78 +271,6 @@ export default function Home() {
     }
   };
 
-  // --- Friend Handlers ---
-  const handleSearchUsers = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim() || !user) return;
-    setSearchPerformed(true); // Mark that a search has been attempted
-    setFriendSearchLoading(true);
-    setError(null);
-    try {
-      const results = await searchUsers(searchQuery, user.uid);
-      setSearchResults(results as UserProfile[]);
-    } catch (err: any) {
-      setError("Error searching users: " + err.message);
-    }
-    setFriendSearchLoading(false);
-  };
-
-  const handleSendRequest = async (targetUserId: string) => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      await sendFriendRequest(user.uid, targetUserId);
-    } catch (err: any) {
-      setError(err.message);
-    }
-    setLoading(false);
-  };
-
-  const handleAcceptRequest = async (requesterId: string) => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      await acceptFriendRequest(user.uid, requesterId);
-    } catch (err: any) {
-      setError(err.message);
-    }
-    setLoading(false);
-  };
-
-  const handleDeclineRequest = async (requesterId: string) => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      await declineFriendRequest(user.uid, requesterId, "decline");
-    } catch (err: any) {
-      setError(err.message);
-    }
-    setLoading(false);
-  };
-
-  const handleCancelRequest = async (targetUserId: string) => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      await declineFriendRequest(user.uid, targetUserId, "cancel");
-    } catch (err: any) {
-      setError(err.message);
-    }
-    setLoading(false);
-  };
-
-  const handleRemoveFriend = async (friendId: string) => {
-    if (!user) return;
-    // Bypassing window.confirm
-    setLoading(true);
-    try {
-      await removeFriend(user.uid, friendId);
-    } catch (err: any) {
-      setError(err.message);
-    }
-    setLoading(false);
-  };
-
   // --- NEW Invite Handlers ---
   const handleDeclineInvite = async (gameId: string) => {
     if (!user) return;
@@ -461,15 +281,6 @@ export default function Home() {
     }
   };
 
-  // Helper to determine friend status for search results
-  const getFriendStatus = (targetId: string) => {
-    if (!userProfile) return null;
-    if (userProfile.friends.includes(targetId)) return "friends";
-    if (userProfile.pendingRequests.includes(targetId)) return "pending_theirs";
-    if (userProfile.sentRequests.includes(targetId)) return "pending_mine";
-    return null;
-  };
-
   // --- Render ---
   return (
     <main
@@ -478,37 +289,12 @@ export default function Home() {
     >
       {/* Full-screen semi-transparent container */}
       <div className="relative flex flex-col bg-black/70 w-full min-h-screen p-4 sm:p-6 md:p-8">
-        {/* Header: Title + Profile */}
-        <div className="flex justify-between items-center w-full mb-4 sm:mb-6">
-          <h1 className="text-5xl sm:text-5xl md:text-6xl font-bold text-white tracking-[0.5rem] sm:tracking-[1rem] -mr-[0.5rem] sm:-mr-[1rem]">
-            <span className="heading u">U</span>
-            <span className="heading n">N</span>
-            <span className="heading o">O</span>
-          </h1>
-          <div className="relative">
-            <button
-              onClick={() => {
-                setModalTab("profile"); // Reset to profile tab when opening
-                setIsAuthModalOpen(true);
-              }}
-              className="p-5 bg-white/10 text-white rounded-full transition-all hover:bg-white/20"
-              aria-label="Open Profile"
-            >
-              <FaUser size="1.25rem" />
-            </button>
-            {user &&
-              userProfile &&
-              friendsDetails.length === 0 &&
-              pendingRequestsDetails.length === 0 && (
-                <div className="absolute top-full right-0 mt-3 mr-2 w-48 bg-blue-600 text-white text-xs rounded-lg p-2 shadow-lg animate-pulse z-10 pointer-events-none">
-                  <p>
-                    Click here to open the friends tab and add some friends!
-                  </p>
-                  <div className="absolute bottom-full right-4 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-b-8 border-b-blue-600"></div>
-                </div>
-              )}
-          </div>
-        </div>
+        <Header
+          user={user}
+          userProfile={userProfile}
+          friendsDetails={friendsDetails}
+          pendingRequestsDetails={pendingRequestsDetails}
+        />
 
         {/* --- NEW: Game Invite Notifications --- */}
         <div className="absolute top-24 left-1/2 -translate-x-1/2 w-full max-w-sm z-40 space-y-2">
@@ -548,7 +334,7 @@ export default function Home() {
         {/* --- END: Game Invite Notifications --- */}
 
         {/* Centered Content Wrapper */}
-        <div className="flex-1 flex flex-col items-center justify-center w-full">
+        <div className="flex-1 flex flex-col items-center justify-baseline w-full mt-6">
           <div className="w-full max-w-xl space-y-4 sm:space-y-6">
             <button
               onClick={() => setIsHowToPlayOpen(true)}
@@ -556,7 +342,6 @@ export default function Home() {
             >
               How to Play
             </button>
-
             {/* Global error (not auth-related) */}
             {error &&
               !error.toLowerCase().includes("firebase") && // Show non-auth errors here
@@ -734,312 +519,15 @@ export default function Home() {
             </div>
           </div>
         )}
-
-        {/* --- AUTHENTICATION MODAL --- */}
-        {isAuthModalOpen && !isAuthLoading && (
-          <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-800 border border-white/20 rounded-xl p-6 sm:p-8 text-white shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-              {/* --- Modal Content --- */}
-              {user ? (
-                // --- LOGGED IN VIEW ---
-                <>
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-2xl sm:text-3xl font-bold text-white truncate">
-                      {user.displayName || user.email}
-                    </h2>
-                    <button
-                      onClick={() => setIsAuthModalOpen(false)}
-                      className="p-2 rounded-full hover:bg-white/10 transition-colors"
-                      aria-label="Close profile"
-                    >
-                      <FaTimes size="1.5rem" />
-                    </button>
-                  </div>
-
-                  {/* --- TABS --- */}
-                  <div className="flex border-b border-white/20 my-4">
-                    <button
-                      onClick={() => setModalTab("profile")}
-                      className={`flex-1 flex items-center justify-center gap-2 py-2 text-lg font-semibold ${
-                        modalTab === "profile"
-                          ? "text-white border-b-2 border-blue-500"
-                          : "text-white/50 hover:text-white/75"
-                      }`}
-                    >
-                      <FaUser /> Profile
-                    </button>
-                    <button
-                      onClick={() => setModalTab("friends")}
-                      className={`flex-1 flex items-center justify-center gap-2 py-2 text-lg font-semibold ${
-                        modalTab === "friends"
-                          ? "text-white border-b-2 border-blue-500"
-                          : "text-white/50 hover:text-white/75"
-                      }`}
-                    >
-                      <FaUserFriends /> Friends
-                    </button>
-                  </div>
-                  {/* --- END TABS --- */}
-
-                  {/* --- Tab Content --- */}
-                  {modalTab === "profile" && (
-                    <div className="space-y-4 animate-fadeIn">
-                      <p className="text-white/80">
-                        You are logged in as:
-                        <br />
-                        <strong className="text-white text-lg break-all">
-                          {user.displayName ||
-                            user.email ||
-                            "Sign-out and Login again"}
-                        </strong>
-                      </p>
-                      <button
-                        onClick={handleLogout}
-                        disabled={loading}
-                        className="w-full px-6 py-3 bg-red-600/80 text-white rounded-lg text-xl font-semibold transition-all hover:bg-red-500/80 active:scale-95 disabled:bg-gray-500"
-                      >
-                        {loading ? "Signing Out..." : "Sign Out"}
-                      </button>
-                    </div>
-                  )}
-
-                  {modalTab === "friends" && (
-                    <div className="space-y-6 animate-fadeIn">
-                      {/* Search Users */}
-                      <form onSubmit={handleSearchUsers} className="space-y-2">
-                        <h3 className="text-xl font-semibold text-white">
-                          Add Friend
-                        </h3>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            placeholder="Search by name or email"
-                            value={searchQuery}
-                            onChange={(e) => {
-                              setSearchQuery(e.target.value);
-                              if (e.target.value.trim() === "") {
-                                setSearchResults([]);
-                                setSearchPerformed(false);
-                              }
-                            }}
-                            className="flex-1 px-4 py-2 bg-white/10 text-white placeholder-white/50 rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                          />
-                          <button
-                            type="submit"
-                            disabled={friendSearchLoading}
-                            className="p-3 bg-blue-600/80 rounded-lg hover:bg-blue-500/80"
-                          >
-                            <FaSearch />
-                          </button>
-                        </div>
-                      </form>
-
-                      {/* Search Results */}
-                      <div className="space-y-2">
-                        {friendSearchLoading && (
-                          <p className="text-white/70">Searching...</p>
-                        )}
-                        {searchPerformed &&
-                          !friendSearchLoading &&
-                          searchResults.length === 0 && (
-                            <p className="text-white/70 text-center">
-                              No users found.
-                            </p>
-                          )}
-                        {searchResults.length > 0 &&
-                          !friendSearchLoading &&
-                          searchResults.map((result) => {
-                            const status = getFriendStatus(result.id);
-                            return (
-                              <div
-                                key={result.id}
-                                className="flex items-center justify-between bg-black/20 p-2 rounded-lg"
-                              >
-                                <span className="truncate">
-                                  {result.displayName}
-                                </span>
-                                {status === "friends" && (
-                                  <span className="flex items-center gap-1 text-green-400">
-                                    <FaUserCheck /> Friends
-                                  </span>
-                                )}
-                                {status === "pending_mine" && (
-                                  <button
-                                    onClick={() =>
-                                      handleCancelRequest(result.id)
-                                    }
-                                    className="flex items-center gap-1 text-yellow-400 hover:text-yellow-300"
-                                  >
-                                    <FaUserClock /> Sent
-                                  </button>
-                                )}
-                                {status === "pending_theirs" && (
-                                  <span className="flex items-center gap-1 text-blue-400">
-                                    <FaUserPlus /> Request Received
-                                  </span>
-                                )}
-                                {status === null && (
-                                  <button
-                                    onClick={() => handleSendRequest(result.id)}
-                                    className="p-2 bg-green-600/80 rounded-lg hover:bg-green-500/80"
-                                    aria-label="Send friend request"
-                                  >
-                                    <FaUserPlus />
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          })}
-                      </div>
-
-                      {/* Pending Requests */}
-                      {pendingRequestsDetails.length > 0 && (
-                        <div className="space-y-2 pt-4 border-t border-white/20">
-                          <h3 className="text-xl font-semibold text-white">
-                            Friend Requests
-                          </h3>
-                          {pendingRequestsDetails.map((req) => (
-                            <div
-                              key={req.id}
-                              className="flex items-center justify-between bg-black/20 p-2 rounded-lg"
-                            >
-                              <span className="truncate">
-                                {req.displayName}
-                              </span>
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => handleAcceptRequest(req.id)}
-                                  className="p-2 bg-green-600/80 rounded-lg hover:bg-green-500/80"
-                                  aria-label="Accept request"
-                                >
-                                  <FaCheck />
-                                </button>
-                                <button
-                                  onClick={() => handleDeclineRequest(req.id)}
-                                  className="p-2 bg-red-600/80 rounded-lg hover:bg-red-500/80"
-                                  aria-label="Decline request"
-                                >
-                                  <FaTimesCircle />
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Friends List */}
-                      <div className="space-y-2 pt-4 border-t border-white/20">
-                        <h3 className="text-xl font-semibold text-white">
-                          My Friends
-                        </h3>
-                        {friendsDetails.length === 0 && (
-                          <p className="text-white/70">
-                            You haven't added any friends yet.
-                          </p>
-                        )}
-                        {friendsDetails.map((friend) => (
-                          <div
-                            key={friend.id}
-                            className="flex items-center justify-between bg-black/20 p-2 rounded-lg"
-                          >
-                            <span className="truncate">
-                              {friend.displayName}
-                            </span>
-                            <button
-                              onClick={() => handleRemoveFriend(friend.id)}
-                              className="p-2 bg-red-600/80 rounded-lg hover:bg-red-500/80"
-                              aria-label="Remove friend"
-                            >
-                              <FaUserMinus />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {/* --- End Tab Content --- */}
-                </>
-              ) : (
-                // --- LOGGED OUT VIEW (Login/Signup) ---
-                <>
-                  <h2 className="text-2xl sm:text-3xl font-bold text-white text-center mb-4">
-                    {authMode === "login" ? "Login" : "Sign Up"}
-                  </h2>
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      authMode === "login" ? handleLogin() : handleSignUp();
-                    }}
-                    className="space-y-4"
-                  >
-                    {authMode === "signup" && (
-                      <input
-                        type="text"
-                        placeholder="Display Name"
-                        value={playerName}
-                        onChange={(e) => setPlayerName(e.target.value)}
-                        className="w-full px-4 py-3 bg-white/10 text-white placeholder-white/50 rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                      />
-                    )}
-                    <input
-                      type="email"
-                      placeholder="Email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-4 py-3 bg-white/10 text-white placeholder-white/50 rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    />
-                    <input
-                      type="password"
-                      placeholder="Password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full px-4 py-3 bg-white/10 text-white placeholder-white/50 rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    />
-
-                    {error && (
-                      <p className="text-red-400 text-sm text-center">
-                        {error}
-                      </p>
-                    )}
-
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full px-6 py-3 bg-green-600/80 text-white rounded-lg text-xl font-semibold transition-all hover:bg-green-500/80 active:scale-95 disabled:bg-gray-500 disabled:opacity-70 disabled:cursor-not-allowed"
-                    >
-                      {loading
-                        ? "Loading..."
-                        : authMode === "login"
-                        ? "Login"
-                        : "Create Account"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAuthMode(authMode === "login" ? "signup" : "login");
-                        setError(null);
-                      }}
-                      className="w-full text-center text-blue-400 hover:text-blue-300 "
-                    >
-                      {authMode === "login"
-                        ? "Need an account? Sign Up"
-                        : "Have an account? Login"}
-                    </button>
-                  </form>
-                </>
-              )}
-            </div>
-          </div>
-        )}
       </div>
       {/* Scrolling Footer */}
-      <div className="fixed bottom-0 left-0 w-full h-15 flex items-center justify-center bg-black/50 backdrop-blur-sm overflow-hidden z-50">
-        <div className="py-2 animate-marquee whitespace-nowrap">
+      <div className="fixed bottom-0 left-0 w-full h-12 flex items-center justify-center bg-black/50 backdrop-blur-sm overflow-hidden">
+        <div className=" animate-marquee whitespace-nowrap">
           <span className="text-lg mx-4 text-white font-semibold flex justify-center align-middle hover:text-blue-300 transition-all hover:scale-105 ">
             <Link href="https://portify-amber.vercel.app/" target="_blank">
               Created by Ata, Check out More
             </Link>
-            <FaArrowRight className="w-6 h-6 pt-1.5" />
+            <FaArrowRight className="w-6 h-6 text-amber-500 pt-1.5" />
           </span>
         </div>
         <div className="absolute top-0 py-2 animate-marquee2 whitespace-nowrap"></div>
