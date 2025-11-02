@@ -8,8 +8,9 @@ import {
   Difficulty,
   cardBackDesigns,
   difficultyDisplay,
-  Color, // Import Color // Import Card
+  Color, // Import Color
 } from "../game/game-types"; // Correct path
+import type { Card } from "../game-logic"; // Import Card type from game-logic
 import { useUnoGame } from "./useUnoGame"; // Correct path
 
 // --- Game Component remains largely the same, just consumes the hook ---
@@ -60,6 +61,19 @@ function Game() {
   const opponents = players.slice(1);
   if (!player) return null; // Still loading initial state
 
+  // Helper function to determine if a card is playable
+  const isCardPlayable = (card: Card, topCard: Card | null): boolean => {
+    if (!topCard) return true; // Can play anything if discard is empty
+    if (card.color === "black") return true; // Wild cards are always playable
+    if (card.color === topCard.color) return true;
+    if (card.value === topCard.value) return true;
+    return false;
+  };
+
+  const hasPlayableCard = player.hand.some((card) =>
+    isCardPlayable(card, topOfDiscard)
+  );
+
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-between p-4 md:p-8 bg-gradient-to-br from-gray-900 to-gray-800 text-white overflow-hidden">
       {/* Settings Button */}
@@ -108,21 +122,42 @@ function Game() {
           <p className="text-sm md:text-base mb-1 md:mb-2 font-semibold">
             Deck ({deck.length}) {/* Show deck count */}
           </p>
-          <div
-            className={`w-16 h-24 md:w-20 md:h-28 ${
-              cardBackDesigns[cardBack]
-            } rounded-lg border border-black ${
-              isPlayerTurn && !isColorPickerOpen // Disable draw if picking color
-                ? "cursor-pointer hover:scale-105"
-                : "opacity-70 cursor-not-allowed"
-            } transition-transform flex items-center justify-center`}
-            onClick={isPlayerTurn ? drawCard : undefined} // Only allow click on player turn
+          <button
+            onClick={isPlayerTurn ? drawCard : undefined}
+            disabled={!isPlayerTurn || isColorPickerOpen}
+            className="relative w-24 h-36 disabled:opacity-70 disabled:cursor-not-allowed group"
             title={isPlayerTurn ? "Draw a card" : ""}
-          ></div>
+          >
+            {deck.length > 2 && (
+              <div
+                className={`absolute top-1 left-1 w-full h-full ${cardBackDesigns[cardBack]} rounded-xl border-4 border-white shadow-lg`}
+              ></div>
+            )}
+            {deck.length > 1 && (
+              <div
+                className={`absolute top-0.5 left-0.5 w-full h-full ${cardBackDesigns[cardBack]} rounded-xl border-4 border-white shadow-lg`}
+              ></div>
+            )}
+            {deck.length > 0 ? (
+              <div
+                className={`absolute inset-0 w-full h-full ${
+                  cardBackDesigns[cardBack]
+                } rounded-xl border-4 border-white shadow-lg group-hover:scale-105 group-hover:-translate-y-2 transition-transform duration-200 ${
+                  isPlayerTurn && !hasPlayableCard
+                    ? "animate-[pulse-glow_1.5s_ease-in-out_infinite]"
+                    : ""
+                }`}
+              ></div>
+            ) : (
+              <div className="w-full h-full rounded-xl bg-black/20 border-4 border-white/50 flex items-center justify-center text-white/50 text-xs text-center p-2">
+                Deck Empty
+              </div>
+            )}
+          </button>
         </div>
 
         {/* Turn Indicator */}
-        <div className="flex flex-col items-center text-center order-3 md:order-none px-4 min-h-[50px]">
+        <div className="flex flex-col items-center text-center order-3 md:order-none px-4 min-h-[50px] pt-12">
           <div className="text-lg md:text-xl font-semibold">
             {winner
               ? "Game Over!"
@@ -134,30 +169,43 @@ function Game() {
         </div>
 
         {/* Discard Pile */}
-        <div className="flex flex-col items-center order-2 md:order-none">
+        <div className="flex flex-col items-center justify-center order-2 md:order-none">
           <p className="text-sm md:text-base mb-1 md:mb-2 font-semibold">
             Discard
           </p>
-          <div className="relative w-16 h-24 md:w-20 md:h-28">
+          <div className="relative w-24 h-36">
             {topOfDiscard ? (
               <CardComponent card={topOfDiscard} className="shadow-lg" />
             ) : (
               <div className="w-full h-full rounded-lg bg-gray-700 border border-gray-500"></div> // Placeholder if empty initially
+            )}
+            {/* Animated Card for Play/Draw */}
+            {animatedCard && animatedCard.type === "play" && (
+              <div
+                key={animatedCard.id}
+                className={`absolute inset-0 z-20 ${
+                  animatedCard.type === "play"
+                    ? "animate-play-card"
+                    : "animate-draw-card"
+                }`}
+              >
+                <CardComponent card={animatedCard.card} />
+              </div>
             )}
             {/* Chosen Color Indicator - Reuse from multiplayer */}
             {topOfDiscard?.color !== "black" &&
               discardPile.length > 1 &&
               discardPile[discardPile.length - 2]?.color === "black" && (
                 <div
-                  className={`absolute -bottom-3 left-0 w-full h-2 rounded ${
+                  className={`absolute -bottom-5 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full border-2 border-white shadow-lg ${
                     {
                       red: "bg-red-500",
                       green: "bg-green-500",
                       blue: "bg-blue-500",
                       yellow: "bg-yellow-400",
-                    }[topOfDiscard.color as Color] // Type assertion might be needed if logic changes
+                    }[topOfDiscard.color as Color]
                   }`}
-                  title={`Current color: ${topOfDiscard.color}`}
+                  title={`Chosen color: ${topOfDiscard.color}`}
                 ></div>
               )}
           </div>
@@ -197,18 +245,28 @@ function Game() {
             {player.hand.length === 0 && !winner && (
               <p className="text-white/70">You have no cards.</p>
             )}
-            {player.hand.map((card, index) => (
-              <CardComponent
-                key={`${card.color}-${card.value}-${index}-${player.hand.length}`} // More unique key
-                card={card}
-                onClick={() => playCard(card, index)}
-                className={
-                  !isPlayerTurn || isColorPickerOpen
-                    ? "opacity-60 cursor-not-allowed"
-                    : ""
-                } // Disable if not turn or picking color
-              />
-            ))}
+            {player.hand.map((card, index) =>
+              (() => {
+                const canPlayerAct = isPlayerTurn && !isColorPickerOpen;
+                const isPlayable = isCardPlayable(card, topOfDiscard);
+                return (
+                  <CardComponent
+                    key={`${card.color}-${card.value}-${index}-${player.hand.length}`}
+                    card={card}
+                    onClick={
+                      canPlayerAct && isPlayable
+                        ? () => playCard(card, index)
+                        : undefined
+                    }
+                    className={
+                      !canPlayerAct || !isPlayable
+                        ? "opacity-50 cursor-not-allowed"
+                        : "shadow-yellow-400/50 shadow-[0_0_15px]"
+                    }
+                  />
+                );
+              })()
+            )}
           </div>
         </div>
       </div>
@@ -243,8 +301,8 @@ function Game() {
       {/* Game Message Popup */}
       {gameMessage &&
         !isColorPickerOpen && ( // Don't show messages while picker is open
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mt-24 md:mt-32 z-50 pointer-events-none">
-            <div className="bg-black/70 backdrop-blur-md text-white font-bold text-2xl md:text-3xl px-6 py-4 md:px-8 md:py-6 rounded-2xl shadow-2xl animate-pulse">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-lg mt-32 md:mt-40 z-50 pointer-events-none">
+            <div className="bg-black/70 backdrop-blur-md text-white font-bold text-xl md:text-2xl px-6 py-4 md:px-8 md:py-6 rounded-2xl shadow-2xl animate-pulse text-center">
               {gameMessage}
             </div>
           </div>

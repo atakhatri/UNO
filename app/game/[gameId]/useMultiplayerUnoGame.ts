@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-// Correct path assuming game-types is inside app/game/
 import { GameState, Player, Color } from "../game-types";
 import type { Card } from "../../game-logic";
 import {
@@ -383,6 +382,12 @@ export function useMultiplayerUnoGame(gameId: string) {
                 playDirection: game.playDirection, // Preserve current direction unless changed
             };
 
+            // Set up the animation
+            updates.animatedCard = {
+                id: `${Date.now()}-${card.value}`,
+                card: card,
+                type: "play",
+            };
 
             // --- UNO Logic ---
             if (currentPlayer.hand.length === 2 && newHand.length === 1) { // Went from 2 to 1 card
@@ -486,6 +491,11 @@ export function useMultiplayerUnoGame(gameId: string) {
             // Update Firestore
             const gameDocRef = getGameDocRef(gameId);
             await updateDoc(gameDocRef, updates);
+
+            // Clear the animation after a short delay
+            setTimeout(() => {
+                updateDoc(gameDocRef, { animatedCard: null });
+            }, 400);
 
         } catch (err) {
             console.error("Error playing card:", err);
@@ -602,12 +612,77 @@ export function useMultiplayerUnoGame(gameId: string) {
                 updates.playerInUnoState = null;
             }
 
+            // Set up the animation for drawing
+            updates.animatedCard = {
+                id: `${Date.now()}-draw`,
+                card: drawnCard,
+                type: "draw",
+            };
 
             const gameDocRef = getGameDocRef(gameId);
             await updateDoc(gameDocRef, updates);
         } catch (err) {
             console.error("Error drawing card:", err);
             setError("Failed to draw card.");
+        }
+        // Clear the animation after a short delay
+        setTimeout(() => {
+            const gameDocRef = getGameDocRef(gameId);
+            updateDoc(gameDocRef, { animatedCard: null });
+        }, 400);
+    };
+
+    const leaveGame = async () => {
+        if (!game || !userId) return;
+
+        const leavingPlayerIndex = game.players.findIndex((p) => p.uid === userId);
+        if (leavingPlayerIndex === -1) {
+            console.error("Player trying to leave was not found in game.");
+            return; // Player not in game, nothing to do
+        }
+
+        const updatedPlayers = game.players.filter((p) => p.uid !== userId);
+
+        // If the game is waiting, just remove the player
+        if (game.status === "waiting") {
+            const gameDocRef = getGameDocRef(gameId);
+            await updateDoc(gameDocRef, { players: updatedPlayers });
+            return;
+        }
+
+        // If game is playing, handle turn logic
+        const updates: Partial<GameState> = { players: updatedPlayers };
+
+        // Check for a winner
+        if (updatedPlayers.length < 2) {
+            updates.status = "finished";
+            updates.winnerId = updatedPlayers[0]?.uid ?? null;
+            updates.gameMessage = `${updatedPlayers[0]?.name ?? "The last player"} wins!`;
+        } else {
+            let newCurrentPlayerIndex = game.currentPlayerIndex;
+
+            // If the leaving player's turn was active
+            if (leavingPlayerIndex === game.currentPlayerIndex) {
+                // The next player's index depends on the new, smaller array.
+                // The player who was *after* the leaver is now at the same index.
+                // We just need to make sure it doesn't go out of bounds.
+                newCurrentPlayerIndex = leavingPlayerIndex % updatedPlayers.length;
+            }
+            // If a player with a lower index leaves, the current index needs to be shifted down.
+            else if (leavingPlayerIndex < game.currentPlayerIndex) {
+                newCurrentPlayerIndex = game.currentPlayerIndex - 1;
+            }
+
+            updates.currentPlayerIndex = newCurrentPlayerIndex;
+            updates.gameMessage = `${game.players[leavingPlayerIndex].name} left the game.`;
+        }
+
+        try {
+            const gameDocRef = getGameDocRef(gameId);
+            await updateDoc(gameDocRef, updates);
+        } catch (err) {
+            console.error("Error updating game after player left:", err);
+            setError("Failed to update game state after leaving.");
         }
     };
 
@@ -621,6 +696,6 @@ export function useMultiplayerUnoGame(gameId: string) {
         drawCard,
         selectColor,
         callUno,
+        leaveGame,
     };
 }
-

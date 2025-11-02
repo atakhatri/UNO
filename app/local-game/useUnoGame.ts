@@ -8,8 +8,9 @@ import {
     isCardPlayable,
     Card, // Keep this import from game-logic
 } from "../game-logic"; // Correct path to game-logic
-import type { Player, Color, Difficulty, AnimatedCard } from "./game-types";
+import type { Player, Color, Difficulty } from "./game-types";
 import { difficultySettings } from "./game-types";
+import type { AnimatedCard } from "../game/game-types"; // Import from the correct file
 
 const ANIMATION_DURATION = 500; // ms
 
@@ -121,10 +122,9 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
             // Trigger animation (simplified)
             if (drawn.length > 0) {
                 setAnimatedCard({
-                    card: drawn[0], // Show animation for the first card
-                    from: "deck",
-                    to: playerIndex === 0 ? "player" : "opponent",
-                    playerId: playerIndex,
+                    id: `${Date.now()}-draw`,
+                    card: drawn[0],
+                    type: "draw",
                 });
             }
 
@@ -287,10 +287,9 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
 
 
             setAnimatedCard({
-                card,
-                from: "player",
-                to: "discard",
-                playerId: currentPlayer.id,
+                id: `${Date.now()}-${card.value}`,
+                card: card,
+                type: "play",
             });
 
             // Update discard pile after animation
@@ -352,10 +351,9 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
         const { drawn, remaining } = drawCards(currentDeck, 1);
 
         setAnimatedCard({
+            id: `${Date.now()}-draw`,
             card: drawn[0],
-            from: "deck",
-            to: "player",
-            playerId: 0,
+            type: "draw",
         });
 
         setTimeout(() => {
@@ -431,10 +429,9 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
 
 
             setAnimatedCard({
+                id: `${Date.now()}-${cardToPlay.value}`,
                 card: cardToPlay,
-                from: "opponent",
-                to: "discard",
-                playerId: computerPlayer.id,
+                type: "play",
             });
 
             setTimeout(() => {

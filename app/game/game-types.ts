@@ -15,12 +15,10 @@ export type Color = "red" | "green" | "blue" | "yellow";
  * Defines the properties for an animated card transition.
  */
 export interface AnimatedCard {
+    id: string; // A unique ID for the animation key, e.g., using Date.now()
     card: Card;
-    from: "deck" | "player" | "opponent";
-    to: "player" | "discard" | "opponent";
-    playerId?: number;
+    type: "play" | "draw";
 }
-
 /**
  * Defines the entire shared state of a game.
  * This is what will be stored in a single Firestore document.
@@ -37,6 +35,7 @@ export interface GameState {
     winnerId: string | null;
     chosenColor: Color | null; // Tracks the chosen color for a Wild card
     gameMessage: string | null;
+    animatedCard: AnimatedCard | null; // For card play/draw animations
     difficulty?: Difficulty; // Optional: Store difficulty if needed later
 
     // --- NEW UNO State Fields ---
@@ -66,4 +65,3 @@ export const difficultyDisplay = {
     medium: { label: "Medium", bg: "bg-yellow-500" },
     hard: { label: "Hard", bg: "bg-red-600" },
 };
-

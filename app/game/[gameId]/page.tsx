@@ -55,6 +55,7 @@ function Game() {
     drawCard,
     selectColor,
     callUno,
+    leaveGame,
   } = useMultiplayerUnoGame(gameId);
   // ===========================================
 
@@ -163,6 +164,20 @@ function Game() {
   const showUnoButton =
     isPlayerTurn && player?.hand.length === 2 && !isAwaitingColorChoice;
 
+  // Helper function to determine if a card is playable
+  const isCardPlayableLocal = (card: Card, topCard: Card | null): boolean => {
+    if (!topCard) return true; // Should not happen in a started game
+    const effectiveColor = game.chosenColor || topCard.color;
+    if (card.color === "black") return true;
+    if (card.color === effectiveColor) return true;
+    if (card.value === topCard.value) return true;
+    return false;
+  };
+
+  const hasPlayableCard =
+    player?.hand.some((card) => isCardPlayableLocal(card, topOfDiscard)) ??
+    false;
+
   // --- UI Handlers ---
   const handlePlayCard = (card: Card, index: number) => {
     if (!isPlayerTurn) {
@@ -199,6 +214,11 @@ function Game() {
       setUnoButtonClickedThisTurn(true);
       setLocalMessage("UNO!");
     }
+  };
+
+  const handleLeaveGame = async () => {
+    await leaveGame();
+    router.push("/");
   };
 
   // --- NEW Invite Handler ---
@@ -284,21 +304,42 @@ function Game() {
           <p className="text-sm md:text-base mb-1 md:mb-2 font-semibold">
             Deck ({game.deck?.length ?? 0})
           </p>
-          <div
-            className={`w-16 h-24 md:w-20 md:h-28 ${
-              cardBackDesigns[cardBack]
-            } rounded-lg border border-black ${
-              isPlayerTurn && !isAwaitingColorChoice
-                ? "cursor-pointer hover:scale-105"
-                : "opacity-70 cursor-not-allowed"
-            } transition-transform flex items-center justify-center`}
-            onClick={handleDrawCard} // Uses updated handler
+          <button
+            onClick={handleDrawCard}
+            disabled={!isPlayerTurn || isAwaitingColorChoice}
+            className="relative w-24 h-36 disabled:opacity-70 disabled:cursor-not-allowed group"
             title={isPlayerTurn ? "Draw a card" : ""}
-          ></div>
+          >
+            {(game.deck?.length ?? 0) > 2 && (
+              <div
+                className={`absolute top-1 left-1 w-full h-full ${cardBackDesigns[cardBack]} rounded-xl border-4 border-white shadow-lg`}
+              ></div>
+            )}
+            {(game.deck?.length ?? 0) > 1 && (
+              <div
+                className={`absolute top-0.5 left-0.5 w-full h-full ${cardBackDesigns[cardBack]} rounded-xl border-4 border-white shadow-lg`}
+              ></div>
+            )}
+            {(game.deck?.length ?? 0) > 0 ? (
+              <div
+                className={`absolute inset-0 w-full h-full ${
+                  cardBackDesigns[cardBack]
+                } rounded-xl border-4 border-white shadow-lg group-hover:scale-105 group-hover:-translate-y-2 transition-transform duration-200 ${
+                  isPlayerTurn && !hasPlayableCard
+                    ? "animate-[pulse-glow_1.5s_ease-in-out_infinite]"
+                    : ""
+                }`}
+              ></div>
+            ) : (
+              <div className="w-full h-full rounded-xl bg-black/20 border-4 border-white/50 flex items-center justify-center text-white/50 text-xs text-center p-2">
+                Deck Empty
+              </div>
+            )}
+          </button>
         </div>
 
         {/* Turn Indicator */}
-        <div className="flex flex-col items-center text-center order-3 md:order-none px-4 min-h-[50px]">
+        <div className="flex flex-col items-center text-center order-3 md:order-none px-4 min-h-[50px] pt-12">
           <div className="text-lg md:text-xl font-semibold">
             {game.status === "waiting"
               ? "Waiting..."
@@ -313,7 +354,7 @@ function Game() {
           <p className="text-sm md:text-base mb-1 md:mb-2 font-semibold">
             Discard
           </p>
-          <div className="relative w-16 h-24 md:w-20 md:h-28">
+          <div className="relative w-24 h-36">
             {topOfDiscard ? (
               <CardComponent card={topOfDiscard} className="shadow-lg" />
             ) : (
@@ -321,10 +362,23 @@ function Game() {
                 Empty
               </div>
             )}
+            {/* Animated Card for Play/Draw */}
+            {game.animatedCard && game.animatedCard.type === "play" && (
+              <div
+                key={game.animatedCard.id}
+                className={`absolute inset-0 z-20 ${
+                  game.animatedCard.type === "play"
+                    ? "animate-play-card"
+                    : "animate-draw-card"
+                }`}
+              >
+                <CardComponent card={game.animatedCard.card} />
+              </div>
+            )}
             {/* Chosen Color Indicator */}
             {game.chosenColor && (
               <div
-                className={`absolute -bottom-3 left-0 w-full h-2 rounded ${
+                className={`absolute -bottom-5 left-1/2 -translate-x-1/2 w-24 h-4 rounded-full border-2 border-white shadow-lg ${
                   {
                     red: "bg-red-500",
                     green: "bg-green-500",
@@ -332,7 +386,7 @@ function Game() {
                     yellow: "bg-yellow-400",
                   }[game.chosenColor]
                 }`}
-                title={`Current color: ${game.chosenColor}`}
+                title={`Chosen color: ${game.chosenColor}`}
               ></div>
             )}
           </div>
@@ -374,18 +428,26 @@ function Game() {
             {player?.hand.length === 0 && game.status === "playing" && (
               <p className="text-white/70">You have no cards.</p>
             )}
-            {player?.hand.map((card, index) => (
-              <CardComponent
-                key={`${card.color}-${card.value}-${index}-${player.hand.length}`}
-                card={card}
-                onClick={() => handlePlayCard(card, index)}
-                className={
-                  !isPlayerTurn || isAwaitingColorChoice
-                    ? "opacity-60 cursor-not-allowed"
-                    : ""
-                }
-              />
-            ))}
+            {player?.hand.map((card, index) => {
+              const canPlayerAct = isPlayerTurn && !isAwaitingColorChoice;
+              const isPlayable = isCardPlayableLocal(card, topOfDiscard);
+              return (
+                <CardComponent
+                  key={`${card.color}-${card.value}-${index}-${player.hand.length}`}
+                  card={card}
+                  onClick={
+                    canPlayerAct && isPlayable
+                      ? () => handlePlayCard(card, index)
+                      : undefined
+                  }
+                  className={
+                    !canPlayerAct || !isPlayable
+                      ? "opacity-50 cursor-not-allowed"
+                      : "shadow-yellow-400/50 shadow-[0_0_15px]"
+                  }
+                />
+              );
+            })}
           </div>
         </div>
       </div>
@@ -480,7 +542,7 @@ function Game() {
               </p>
             )}
             <button
-              onClick={() => router.push("/")}
+              onClick={handleLeaveGame}
               className="mt-4 w-full px-6 py-2 bg-red-600/80 hover:bg-red-700/80 rounded-lg text-lg font-semibold"
             >
               Leave Game
@@ -501,7 +563,7 @@ function Game() {
                   } Won!`}
             </h2>
             <button
-              onClick={() => router.push("/")}
+              onClick={handleLeaveGame}
               className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-xl font-semibold"
             >
               Back to Lobby
@@ -511,8 +573,8 @@ function Game() {
       )}
       {/* Game Message Popup */}
       {(game.gameMessage || localMessage) && !isAwaitingColorChoice && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mt-24 md:mt-32 z-50 pointer-events-none">
-          <div className="bg-black/70 backdrop-blur-md text-white font-bold text-2xl md:text-3xl px-6 py-4 md:px-8 md:py-6 rounded-2xl shadow-2xl animate-pulse">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-lg mt-32 md:mt-40 z-50 pointer-events-none">
+          <div className="bg-black/70 backdrop-blur-md text-white font-bold text-xl md:text-2xl px-6 py-4 md:px-8 md:py-6 rounded-2xl shadow-2xl animate-pulse text-center">
             {localMessage || game.gameMessage}
           </div>
         </div>
@@ -580,7 +642,7 @@ function Game() {
               {/* Leave Game Button */}
               <div className=" pt-4 border-t border-white/10">
                 <button
-                  onClick={() => router.push("/")}
+                  onClick={handleLeaveGame}
                   className="w-full px-6 py-3 bg-red-600/80 hover:bg-red-700/80 rounded-lg text-lg font-semibold"
                 >
                   Leave Game

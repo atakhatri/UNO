@@ -11,10 +11,13 @@ import {
   FaUserPlus,
   FaCheck,
   FaTimesCircle,
+  FaCopy,
+  FaClipboardCheck,
   FaUserClock,
   FaUserCheck,
   FaUserMinus,
   FaArrowLeft,
+  FaQuestionCircle,
 } from "react-icons/fa";
 import type { User } from "firebase/auth";
 import {
@@ -70,6 +73,8 @@ export default function ProfilePage() {
   const [pendingRequestsDetails, setPendingRequestsDetails] = useState<
     UserProfile[]
   >([]);
+  const [showSearchInfo, setShowSearchInfo] = useState(false);
+  const [isUidCopied, setIsUidCopied] = useState(false);
 
   // --- Effects ---
   useEffect(() => {
@@ -233,6 +238,16 @@ export default function ProfilePage() {
     );
   };
 
+  const handleCopyUid = () => {
+    if (user?.uid) {
+      navigator.clipboard.writeText(user.uid);
+      setIsUidCopied(true);
+      setTimeout(() => {
+        setIsUidCopied(false);
+      }, 2000); // Reset after 2 seconds
+    }
+  };
+
   const getFriendStatus = (targetId: string) => {
     if (!userProfile) return null;
     if (userProfile.friends.includes(targetId)) return "friends";
@@ -249,7 +264,7 @@ export default function ProfilePage() {
         style={{ backgroundImage: "url('/main_bg.png')" }}
       >
         <div className="flex min-h-screen w-full items-center justify-center bg-black/70">
-          <div className="h-16 w-16 animate-spin rounded-full border-4 border-solid border-blue-500 border-t-transparent"></div>
+          <div className="h-16 w-16 animate-spin rounded-full border- border-solid border-blue-500 border-t-transparent"></div>
         </div>
       </div>
     );
@@ -282,7 +297,7 @@ export default function ProfilePage() {
               {/* Left Column: Profile Info */}
               <div className="md:col-span-1 bg-gray-800/50 border border-white/20 rounded-xl p-2 sm:p-6 flex flex-col">
                 <div className="flex items-center gap-4 mb-6">
-                  <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-3xl font-bold">
+                  <div className="w-16 h-16 text-white bg-blue-600 rounded-full flex items-center justify-center text-3xl font-bold">
                     {user.displayName?.charAt(0).toUpperCase()}
                   </div>
                   <div>
@@ -292,6 +307,27 @@ export default function ProfilePage() {
                     <p className="text-sm text-white/60 break-all">
                       {user.email}
                     </p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-white/70">
+                    User ID
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <p className="flex-1 px-3 py-2 bg-black/20 text-white/80 rounded-md text-xs break-all">
+                      {user.uid}
+                    </p>
+                    <button
+                      onClick={handleCopyUid}
+                      className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
+                      title="Copy User ID"
+                    >
+                      {isUidCopied ? (
+                        <FaClipboardCheck className="text-green-400" />
+                      ) : (
+                        <FaCopy />
+                      )}
+                    </button>
                   </div>
                 </div>
                 <div className="mt-auto">
@@ -309,13 +345,32 @@ export default function ProfilePage() {
               <div className="md:col-span-2 bg-gray-800/50 border border-white/20 rounded-xl p-2 sm:p-6 space-y-6 overflow-y-auto">
                 {/* Search Users */}
                 <form onSubmit={handleSearchUsers} className="space-y-2">
-                  <h3 className="text-xl font-semibold text-white">
-                    Add Friend
-                  </h3>
+                  <div className="flex items-center gap-2 relative">
+                    <h3 className="text-xl font-semibold text-white">
+                      Add Friend
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowSearchInfo(!showSearchInfo)}
+                      onBlur={() => setShowSearchInfo(false)} // Hide on blur
+                      className="text-white/50 hover:text-white"
+                    >
+                      <FaQuestionCircle />
+                    </button>
+                    {showSearchInfo && (
+                      <div className="absolute top-full left-0 mt-2 w-full max-w-xs bg-gray-900 border border-white/20 text-white/90 text-sm rounded-lg p-3 shadow-lg z-10">
+                        <p>The search is case-sensitive.</p>
+                        <p>
+                          You can search for friends by their exact display name
+                          or by their User ID.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="Search by name or email"
+                      placeholder="Search by name or User ID"
                       value={searchQuery}
                       onChange={(e) => {
                         setSearchQuery(e.target.value);
@@ -351,7 +406,7 @@ export default function ProfilePage() {
                     return (
                       <div
                         key={result.id}
-                        className="flex items-center justify-between bg-black/20 p-2 rounded-lg"
+                        className="flex items-center justify-between text-white/80 bg-black/20 p-2 rounded-lg"
                       >
                         <span className="truncate">{result.displayName}</span>
                         {status === "friends" && (
@@ -388,11 +443,13 @@ export default function ProfilePage() {
                 {/* Pending Requests */}
                 {pendingRequestsDetails.length > 0 && (
                   <div className="space-y-2 pt-4 border-t border-white/20">
-                    <h3 className="text-xl font-semibold">Friend Requests</h3>
+                    <h3 className="text-xl text-white font-semibold">
+                      Friend Requests
+                    </h3>
                     {pendingRequestsDetails.map((req) => (
                       <div
                         key={req.id}
-                        className="flex items-center justify-between bg-black/20 p-2 rounded-lg"
+                        className="flex items-center justify-between text-white/80 bg-black/20 p-2 rounded-lg"
                       >
                         <span className="truncate">{req.displayName}</span>
                         <div className="flex gap-2">
@@ -416,7 +473,9 @@ export default function ProfilePage() {
 
                 {/* Friends List */}
                 <div className="space-y-2 pt-4 border-t border-white/20">
-                  <h3 className="text-xl font-semibold">My Friends</h3>
+                  <h3 className="text-xl text-white font-semibold">
+                    My Friends
+                  </h3>
                   {friendsDetails.length === 0 && (
                     <p className="text-center text-white/60">
                       You haven't added any friends yet.
@@ -425,7 +484,7 @@ export default function ProfilePage() {
                   {friendsDetails.map((friend) => (
                     <div
                       key={friend.id}
-                      className="flex items-center justify-between bg-black/20 p-2 rounded-lg"
+                      className="flex items-center justify-between text-white/80 bg-black/20 p-2 rounded-lg"
                     >
                       <span className="truncate">{friend.displayName}</span>
                       <button

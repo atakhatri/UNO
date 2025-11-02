@@ -21,16 +21,6 @@ export interface Player {
 export type Color = "red" | "green" | "blue" | "yellow";
 
 /**
- * Defines the properties for an animated card transition.
- */
-export interface AnimatedCard {
-    card: Card;
-    from: "deck" | "player" | "opponent";
-    to: "player" | "discard" | "opponent";
-    playerId?: number;
-}
-
-/**
  * Defines the entire shared state of a game.
  * This is what will be stored in a single Firestore document.
  */

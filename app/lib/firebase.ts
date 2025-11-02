@@ -207,43 +207,49 @@ export const createUserDocument = async (user: User, displayName: string) => {
 
 /**
  * Searches for users by their display name.
- * @param nameQuery The partial name to search for.
+ * @param queryInput The display name or UID to search for.
  * @param currentUserId The UID of the user performing the search (to exclude self).
  */
-export const searchUsers = async (nameQuery: string, currentUserId: string) => {
-    if (!nameQuery.trim()) return [];
-    const nameQueryLower = nameQuery.toLowerCase();
+export const searchUsers = async (
+    queryInput: string,
+    currentUserId: string
+) => {
+    const trimmedQuery = queryInput.trim();
+    if (!trimmedQuery) return [];
 
+    const results = new Map<string, any>();
+    const promises = [];
+
+    // 1. Query by exact display name
     const displayNameQuery = query(
         usersCollection,
-        where("displayName", "==", nameQuery)
+        where("displayName", "==", trimmedQuery)
     );
-    const emailQuery = query(
-        usersCollection,
-        where("email", "==", nameQueryLower)
-    );
+    promises.push(getDocs(displayNameQuery));
 
-    try {
-        const [nameSnapshot, emailSnapshot] = await Promise.all([
-            getDocs(displayNameQuery),
-            getDocs(emailQuery),
-        ]);
-        const results = new Map<string, any>();
-        nameSnapshot.forEach((doc) => {
-            if (doc.id !== currentUserId) {
-                results.set(doc.id, { ...doc.data(), id: doc.id });
-            }
-        });
-        emailSnapshot.forEach((doc) => {
-            if (doc.id !== currentUserId) {
-                results.set(doc.id, { ...doc.data(), id: doc.id });
-            }
-        });
-        return Array.from(results.values());
-    } catch (error) {
-        console.error("Error searching users:", error);
-        return [];
+    // 2. Attempt to fetch by UID directly
+    // This is efficient as it's a direct document read.
+    const userDocRef = getUserDocRef(trimmedQuery);
+    promises.push(getDoc(userDocRef));
+
+    const [nameSnapshot, uidDoc] = (await Promise.all(promises)) as [
+        Awaited<ReturnType<typeof getDocs>>,
+        Awaited<ReturnType<typeof getDoc>>
+    ];
+
+    // Add name search results
+    nameSnapshot.forEach((doc) => {
+        if (doc.id !== currentUserId) {
+            results.set(doc.id, { ...(doc.data() as object), id: doc.id });
+        }
+    });
+
+    // Add UID search result if it exists and is not the current user
+    if (uidDoc.exists() && uidDoc.id !== currentUserId) {
+        results.set(uidDoc.id, { ...(uidDoc.data() as object), id: uidDoc.id });
     }
+
+    return Array.from(results.values());
 };
 
 /**
@@ -421,4 +427,3 @@ export {
     getDoc, updateDoc, arrayUnion, onSnapshot
 };
 export type { User }; // Export the User type for React state
-

@@ -1,23 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link"; // Import Link for navigation
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FaTimes, FaArrowRight } from "react-icons/fa";
 import { Header } from "../components/Header";
-// Using relative path
 import { Player, GameState, Difficulty } from "./game/game-types";
-// Using relative path
 import {
   db,
   getGameDocRef,
-  // Import new auth functions
   auth,
   onAuthStateChanged,
   User,
-  // --- Import our new function ---
-  getUserDocRef, // Import user doc ref
-  // --- Import Firestore functions ---
+  getUserDocRef,
   getDoc,
   setDoc,
   updateDoc,
@@ -27,10 +22,8 @@ import {
   deleteGameInvite,
 } from "./lib/firebase";
 
-// Helper function to generate a simple 6-digit game ID
 const generateGameId = () => Math.random().toString().substring(2, 8);
 
-// Define User Profile type
 interface UserProfile {
   id: string;
   uid: string;
@@ -41,10 +34,8 @@ interface UserProfile {
   sentRequests: string[];
 }
 
-// --- NEW ---
-// Define Game Invite type
 interface GameInvite {
-  id: string; // The gameId
+  id: string;
   gameId: string;
   senderId: string;
   senderName: string;
