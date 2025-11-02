@@ -8,8 +8,7 @@ import {
     isCardPlayable,
     Card, // Keep this import from game-logic
 } from "../game-logic"; // Correct path to game-logic
-import type { Player, Color, Difficulty } from "./game-types";
-import { difficultySettings } from "./game-types";
+import type { Player, Color } from "./game-types";
 import type { AnimatedCard } from "../game/game-types"; // Import from the correct file
 
 const ANIMATION_DURATION = 500; // ms
@@ -22,10 +21,9 @@ const ANIMATION_DURATION = 500; // ms
  * The UI component (`page.tsx`) will consume this hook to get state and interact with the game.
  *
  * @param numPlayers - The total number of players (including human).
- * @param difficulty - The selected game difficulty.
  * @returns An object containing game state and functions to dispatch game actions.
  */
-export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
+export function useUnoGame(numPlayers: number) {
     const [players, setPlayers] = useState<Player[]>([]);
     const [deck, setDeck] = useState<Card[]>([]);
     const [discardPile, setDiscardPile] = useState<Card[]>([]);
@@ -519,16 +517,11 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
      * Initializes or resets the game to its starting state.
      */
     const startGame = useCallback(() => {
-        const settings =
-            difficultySettings[difficulty] || difficultySettings.medium;
         let currentDeck = shuffleDeck(createDeck());
 
         const newPlayers: Player[] = [];
         for (let i = 0; i < numPlayers; i++) {
-            // Determine card count based on difficulty (example: player 0 gets fewer on hard)
-            let cardCount = 7; // Default
-            if (i === 0 && difficulty === 'hard') cardCount = 5;
-            // if(i !== 0 && difficulty === 'easy') cardCount = 5; // Example: Make AI easier
+            const cardCount = 7; // Default
 
             const { drawn, remaining } = drawCards(currentDeck, cardCount);
             newPlayers.push({
@@ -567,7 +560,7 @@ export function useUnoGame(numPlayers: number, difficulty: Difficulty) {
         setIsColorPickerOpen(false);
         setPlayedWildCard(null);
         setGameMessage("Game started!");
-    }, [difficulty, numPlayers]);
+    }, [numPlayers]);
 
     // Effect to start the game on hook initialization
     useEffect(() => {

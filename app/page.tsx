@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FaTimes, FaArrowRight } from "react-icons/fa";
 import { Header } from "../components/Header";
-import { Player, GameState, Difficulty } from "./game/game-types";
+import { Player, GameState } from "./game/game-types";
 import {
   db,
   getGameDocRef,
@@ -53,7 +53,6 @@ export default function Home() {
 
   // --- Game State ---
   const [gameIdToJoin, setGameIdToJoin] = useState("");
-  const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isHowToPlayOpen, setIsHowToPlayOpen] = useState(false);
@@ -174,7 +173,6 @@ export default function Home() {
         hostId: user.uid,
         players: [hostPlayer],
         status: "waiting",
-        difficulty: difficulty,
       };
       const gameDocRef = getGameDocRef(newGameId);
       await setDoc(gameDocRef, newGame);
@@ -348,23 +346,11 @@ export default function Home() {
                 <h2 className="text-lg sm:text-xl text-white font-semibold text-center">
                   Single Player
                 </h2>
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                  <select
-                    id="difficulty-local"
-                    className="bg-black/50 text-white rounded-lg px-4 py-2 text-sm sm:text-base border border-white/20 appearance-none w-full sm:w-1/2"
-                    value={difficulty}
-                    onChange={(e) =>
-                      setDifficulty(e.target.value as Difficulty)
-                    }
-                  >
-                    <option value="easy">Easy</option>
-                    <option value="medium">Medium</option>
-                    <option value="hard">Hard</option>
-                  </select>
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
                   <Link
-                    href={`/local-game?difficulty=${difficulty}&players=2`}
+                    href={`/local-game?players=2`}
                     passHref
-                    className="w-full sm:w-1/2"
+                    className="w-full"
                   >
                     <button
                       disabled={loading}
@@ -377,9 +363,9 @@ export default function Home() {
               </div>
 
               <div className="flex items-center gap-2">
-                <hr className="flex-grow border-white/20" />
+                <hr className="grow border-white/20" />
                 <span className="text-white/80 font-semibold">OR</span>
-                <hr className="flex-grow border-white/20" />
+                <hr className="grow border-white/20" />
               </div>
 
               {/* --- Multiplayer Sections --- */}

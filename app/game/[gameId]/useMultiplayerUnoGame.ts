@@ -304,7 +304,6 @@ export function useMultiplayerUnoGame(gameId: string) {
                 winnerId: null,
                 playerInUnoState: null,
                 pendingUnoCallCheck: null,
-                difficulty: game.difficulty, // Make sure difficulty is persisted
             });
         } catch (err) {
             console.error("Error starting game:", err);

@@ -36,7 +36,6 @@ export interface GameState {
     winnerId: string | null;
     chosenColor: Color | null; // Tracks the chosen color for a Wild card
     gameMessage: string | null;
-    difficulty?: Difficulty; // Optional: Store difficulty if needed later
 
     // --- NEW UNO State Fields ---
     /** UID of the player currently holding only one card. */
@@ -46,22 +45,8 @@ export interface GameState {
 
 }
 
-// --- Difficulty and Design settings remain the same ---
-export const difficultySettings = {
-    easy: { playerCards: 7 }, // Removed computerCards, dealt evenly on start
-    medium: { playerCards: 7 },
-    hard: { playerCards: 7 }, // Can adjust card count in startGame if desired
-};
-export type Difficulty = keyof typeof difficultySettings;
-
 export const cardBackDesigns = {
     default: "bg-red-600",
     blue: "bg-blue-800",
     green: "bg-green-700",
-};
-
-export const difficultyDisplay = {
-    easy: { label: "Easy", bg: "bg-green-600" },
-    medium: { label: "Medium", bg: "bg-yellow-500" },
-    hard: { label: "Hard", bg: "bg-red-600" },
 };

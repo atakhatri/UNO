@@ -1,11 +1,14 @@
 import { CSSProperties, ReactNode } from "react";
 import type { Card } from "./game-logic";
+import { BsBanFill, BsFillBanFill } from "react-icons/bs";
+import { IoSync } from "react-icons/io5";
 
 interface CardProps {
   card: Card;
   className?: string;
   style?: CSSProperties;
   onClick?: () => void;
+  highlight?: boolean;
 }
 
 type CardValue = Card["value"];
@@ -39,21 +42,15 @@ const SpecialCard = ({
   switch (value) {
     case "skip":
       return (
-        <div
-          className={`relative ${baseIconClass} rounded-full border-[6px] border-white`}
+        <p
+          className={`${baseIconClass} text-black/40 mb-8 mr-1 font-extrabold scale-120`}
         >
-          <div
-            className="absolute inset-0 m-auto h-[4px] w-10 rotate-45"
-            style={{ backgroundColor: cardColor }}
-          ></div>
-        </div>
+          ⊘
+        </p>
       );
     case "reverse":
       return (
-        <div className={`relative ${baseIconClass} text-white text-4xl`}>
-          <span className="absolute top-0 left-1 font-black">{"⟳"}</span>
-          <span className="absolute bottom-0 right-1 font-black">{"⟲"}</span>
-        </div>
+        <IoSync className={`${baseIconClass} text-black/40 font-extrabold `} />
       );
     case "draw-two":
       return (
@@ -103,6 +100,7 @@ const SpecialCard = ({
 export const CardComponent = ({
   card,
   onClick,
+  highlight = false,
   className,
   style,
 }: CardProps) => {
@@ -130,7 +128,7 @@ export const CardComponent = ({
       onClick={onClick}
       style={{ backgroundColor: cardColorValue, ...style }}
       className={`
-        w-24 h-36
+        w-28 h-40
         rounded-xl
         p-2
         shadow-lg
@@ -142,13 +140,14 @@ export const CardComponent = ({
             ? "cursor-pointer hover:scale-110 hover:-translate-y-2 transition-transform duration-200"
             : ""
         }
+        ${highlight ? "shadow-yellow-400/50 shadow-[0_0_15px]" : ""}
         ${className || ""}
       `}
       disabled={!onClick}
     >
       {/* Corner Value - Top Left */}
       {cornerValue && (
-        <div className="absolute top-1 left-2 text-2xl font-black text-white">
+        <div className="absolute top-1 left-2 text-xl font-black text-white">
           {cornerValue}
         </div>
       )}
@@ -162,7 +161,7 @@ export const CardComponent = ({
 
       {/* Corner Value - Bottom Right */}
       {cornerValue && (
-        <div className="absolute bottom-1 right-2 text-2xl font-black text-white transform rotate-180">
+        <div className="absolute bottom-1 right-2 text-xl font-black text-white transform rotate-180">
           {cornerValue}
         </div>
       )}
