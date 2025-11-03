@@ -57,9 +57,9 @@ export const drawCards = (deck: Card[], count: number) => {
 };
 
 export const isCardPlayable = (card: Card, topOfDiscard: Card): boolean => {
-    if (!topOfDiscard) return true; // Can play any card to start the pile (though this is handled by startGame)
-    if (card.color === "black") return true; // Wild cards are always playable
-    if (topOfDiscard.color === "black") return true; // Any card can be played on a chosen wild
+    if (!topOfDiscard) return true;
+    if (card.color === "black") return true;
+    if (topOfDiscard.color === "black") return true;
     return (
         card.color === topOfDiscard.color || card.value === topOfDiscard.value
     );

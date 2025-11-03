@@ -1,28 +1,19 @@
 import type { Card } from "../game-logic";
 export interface Player {
-    id?: number; // Player order (0, 1, 2, 3) - Assigned when game starts
-    uid: string; // Firebase Auth User ID
-    name: string; // Display name
+    id?: number;
+    uid: string;
+    name: string;
     hand: Card[];
 }
 
-/**
- * Defines the playable colors for wild cards.
- */
 export type Color = "red" | "green" | "blue" | "yellow";
 
-/**
- * Defines the properties for an animated card transition.
- */
 export interface AnimatedCard {
-    id: string; // A unique ID for the animation key, e.g., using Date.now()
+    id: string;
     card: Card;
     type: "play" | "draw";
 }
-/**
- * Defines the entire shared state of a game.
- * This is what will be stored in a single Firestore document.
- */
+
 export interface GameState {
     gameId: string;
     hostId: string;
@@ -33,14 +24,11 @@ export interface GameState {
     playDirection: 1 | -1;
     status: "waiting" | "playing" | "finished";
     winnerId: string | null;
-    chosenColor: Color | null; // Tracks the chosen color for a Wild card
+    chosenColor: Color | null;
     gameMessage: string | null;
-    animatedCard: AnimatedCard | null; // For card play/draw animations
+    animatedCard: AnimatedCard | null;
 
-    // --- NEW UNO State Fields ---
-    /** UID of the player currently holding only one card. */
     playerInUnoState: string | null;
-    /** UID of the player who just went down to one card this turn, requiring check on next turn start. */
     pendingUnoCallCheck: string | null;
 
 }

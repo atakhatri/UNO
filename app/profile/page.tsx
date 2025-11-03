@@ -38,7 +38,6 @@ import {
   removeFriend,
 } from "../lib/firebase";
 
-// Define User Profile type
 interface UserProfile {
   id: string;
   uid: string;
@@ -52,7 +51,6 @@ interface UserProfile {
 export default function ProfilePage() {
   const router = useRouter();
 
-  // --- State Management ---
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -64,7 +62,6 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Friends State
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
   const [friendSearchLoading, setFriendSearchLoading] = useState(false);
@@ -76,7 +73,6 @@ export default function ProfilePage() {
   const [showSearchInfo, setShowSearchInfo] = useState(false);
   const [isUidCopied, setIsUidCopied] = useState(false);
 
-  // --- Effects ---
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -96,7 +92,6 @@ export default function ProfilePage() {
           const data = doc.data() as UserProfile;
           setUserProfile({ ...data, id: doc.id });
 
-          // Fetch friends details
           if (data.friends && data.friends.length > 0) {
             const friendPromises = data.friends.map(async (friendId) => {
               const friendDoc = await getDoc(getUserDocRef(friendId));
@@ -113,7 +108,6 @@ export default function ProfilePage() {
             setFriendsDetails([]);
           }
 
-          // Fetch pending requests details
           if (data.pendingRequests && data.pendingRequests.length > 0) {
             const requestPromises = data.pendingRequests.map(
               async (requesterId) => {
@@ -146,7 +140,6 @@ export default function ProfilePage() {
     }
   }, [user]);
 
-  // --- Auth Handlers ---
   const handleSignUp = async () => {
     if (!email || !password || !playerName.trim()) {
       setError("Please fill in all fields.");
@@ -162,7 +155,6 @@ export default function ProfilePage() {
       );
       await updateProfile(userCredential.user, { displayName: playerName });
       await createUserDocument(userCredential.user, playerName);
-      // Auth state listener will handle the rest
     } catch (err: any) {
       setError(err.message);
     }
@@ -178,7 +170,6 @@ export default function ProfilePage() {
     setError(null);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // Auth state listener will handle the rest
     } catch (err: any) {
       setError(err.message);
     }
@@ -191,7 +182,6 @@ export default function ProfilePage() {
     setLoading(false);
   };
 
-  // --- Friend Handlers ---
   const handleSearchUsers = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim() || !user) return;
@@ -244,7 +234,7 @@ export default function ProfilePage() {
       setIsUidCopied(true);
       setTimeout(() => {
         setIsUidCopied(false);
-      }, 2000); // Reset after 2 seconds
+      }, 2000);
     }
   };
 
@@ -256,7 +246,6 @@ export default function ProfilePage() {
     return null;
   };
 
-  // --- Render ---
   if (isAuthLoading) {
     return (
       <div
@@ -277,7 +266,6 @@ export default function ProfilePage() {
     >
       <div className="flex min-h-screen w-full flex-col bg-black/70 p-2 sm:p-6 md:p-8">
         {user ? (
-          // --- LOGGED IN VIEW ---
           <div className="w-full max-w-6xl mx-auto flex-1 flex flex-col">
             <header className="flex justify-between items-center mb-6 md:mb-8">
               <h1 className="text-3xl sm:text-4xl font-bold text-white">
@@ -352,7 +340,7 @@ export default function ProfilePage() {
                     <button
                       type="button"
                       onClick={() => setShowSearchInfo(!showSearchInfo)}
-                      onBlur={() => setShowSearchInfo(false)} // Hide on blur
+                      onBlur={() => setShowSearchInfo(false)}
                       className="text-white/50 hover:text-white"
                     >
                       <FaQuestionCircle />

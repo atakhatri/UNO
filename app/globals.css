@@ -16,11 +16,9 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  /* font-family: Arial, Helvetica, sans-serif; */ /* Removed to allow Tailwind's font-sans to apply */
 }
 
 .heading {
-  /* font-size: 5em; */
   margin-bottom: 0;
   text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000,
     2px 2px 0 #000, -3px 3px 0 #000, -4px 4px 0 #000, -5px 5px 0 #000,
@@ -29,14 +27,53 @@ body {
 }
 
 .u {
-  color: #ff5555;
-} /* Red */
+  animation: cycle-u 3s linear infinite;
+}
 .n {
-  color: #ffaa00;
-} /* Yellow */
+  animation: cycle-n 3s linear infinite;
+}
 .o {
-  color: #55aa55;
-} /* Green */
+  animation: cycle-o 3s linear infinite;
+}
+
+@keyframes cycle-u {
+  0%,
+  100% {
+    color: #ff5555;
+  }
+  33% {
+    color: #ffaa00;
+  }
+  66% {
+    color: #55aa55;
+  }
+}
+
+@keyframes cycle-n {
+  0%,
+  100% {
+    color: #ffaa00;
+  }
+  33% {
+    color: #55aa55;
+  }
+  66% {
+    color: #ff5555;
+  }
+}
+
+@keyframes cycle-o {
+  0%,
+  100% {
+    color: #55aa55;
+  }
+  33% {
+    color: #ff5555;
+  }
+  66% {
+    color: #ffaa00;
+  }
+}
 
 @keyframes card-pop {
   0% {
@@ -73,7 +110,6 @@ body {
   animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* From Deck to Player's Hand */
 @keyframes deck-draw {
   from {
     top: 50%;
@@ -92,7 +128,6 @@ body {
   animation: deck-draw 0.5s ease-in-out forwards;
 }
 
-/* From Player's Hand to Discard Pile */
 @keyframes player-play {
   from {
     top: 100%;
@@ -111,7 +146,6 @@ body {
   animation: player-play 0.5s ease-in-out forwards;
 }
 
-/* From Opponent's Hand to Discard Pile */
 @keyframes opponent-play {
   from {
     top: 0;

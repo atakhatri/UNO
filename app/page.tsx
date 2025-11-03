@@ -40,18 +40,14 @@ interface GameInvite {
   senderId: string;
   senderName: string;
 }
-// --- END NEW ---
 
 export default function Home() {
   const router = useRouter();
 
-  // --- Auth State ---
-  // Simplified for home page: only need user and loading status
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
-  // --- Game State ---
   const [gameIdToJoin, setGameIdToJoin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -62,10 +58,8 @@ export default function Home() {
     UserProfile[]
   >([]);
 
-  // --- NEW Game Invite State ---
   const [gameInvites, setGameInvites] = useState<GameInvite[]>([]);
 
-  // Effect to listen for auth changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -80,17 +74,14 @@ export default function Home() {
     return () => unsubscribe();
   }, [isAuthLoading]);
 
-  // Effect to listen for Firestore User Profile AND Game Invites
   useEffect(() => {
     if (user) {
-      // --- 1. Listen for User Profile ---
       const userDocRef = getUserDocRef(user.uid);
       const unsubProfile = onSnapshot(userDocRef, async (doc) => {
         if (doc.exists()) {
           const data = doc.data() as UserProfile;
           setUserProfile({ ...data, id: doc.id });
 
-          // Fetch details for friends
           if (data.friends && data.friends.length > 0) {
             const friendPromises = data.friends.map(async (friendId) => {
               const friendDoc = await getDoc(getUserDocRef(friendId));
@@ -106,7 +97,6 @@ export default function Home() {
             setFriendsDetails([]);
           }
 
-          // Fetch details for pending requests
           if (data.pendingRequests && data.pendingRequests.length > 0) {
             const requestPromises = data.pendingRequests.map(
               async (requesterId) => {
@@ -129,7 +119,6 @@ export default function Home() {
         }
       });
 
-      // --- 2. Listen for Game Invites ---
       const invitesColRef = getGameInvitesCollectionRef(user.uid);
       const unsubInvites = onSnapshot(invitesColRef, (snapshot) => {
         const invites = snapshot.docs.map(
@@ -139,22 +128,20 @@ export default function Home() {
       });
 
       return () => {
-        unsubProfile(); // Cleanup profile listener
-        unsubInvites(); // Cleanup invites listener
+        unsubProfile();
+        unsubInvites();
       };
     } else {
-      // User logged out, clear lists
       setFriendsDetails([]);
       setPendingRequestsDetails([]);
       setGameInvites([]);
     }
   }, [user]);
 
-  // --- Game Handlers (Modified to use logged-in user) ---
   const handleCreateGame = async () => {
     const currentDisplayName = user?.displayName;
     if (!user || !currentDisplayName) {
-      setError("Please log in to create a game."); // Redirect to profile page to login
+      setError("Please log in to create a game.");
       router.push("/profile");
       return;
     }
@@ -184,13 +171,12 @@ export default function Home() {
     }
   };
 
-  // MODIFIED to accept an optional inviteId
   const handleJoinGame = async (inviteGameId?: string) => {
-    const gameId = inviteGameId || gameIdToJoin; // Use invite ID if provided
+    const gameId = inviteGameId || gameIdToJoin;
 
     const currentDisplayName = user?.displayName;
     if (!user || !currentDisplayName) {
-      setError("Please log in to join a game."); // Redirect to profile page to login
+      setError("Please log in to join a game.");
       router.push("/profile");
       return;
     }
@@ -207,7 +193,6 @@ export default function Home() {
 
       if (!gameDoc.exists()) {
         setError("Game not found. Check the ID and try again.");
-        // If it was an invite, delete the bad invite
         if (inviteGameId) await deleteGameInvite(user.uid, inviteGameId);
         setLoading(false);
         return;
@@ -234,7 +219,7 @@ export default function Home() {
       }
       if (gameData.players.some((p) => p.uid === user.uid)) {
         if (inviteGameId) await deleteGameInvite(user.uid, inviteGameId);
-        router.push(`/game/${gameId}`); // Already in, just navigate
+        router.push(`/game/${gameId}`);
         return;
       }
 
@@ -247,7 +232,6 @@ export default function Home() {
         players: arrayUnion(newPlayer),
       });
 
-      // If we joined from an invite, delete the invite
       if (inviteGameId) {
         await deleteGameInvite(user.uid, inviteGameId);
       }
@@ -260,7 +244,6 @@ export default function Home() {
     }
   };
 
-  // --- NEW Invite Handlers ---
   const handleDeclineInvite = async (gameId: string) => {
     if (!user) return;
     try {
@@ -270,7 +253,6 @@ export default function Home() {
     }
   };
 
-  // --- Render ---
   return (
     <main
       className="flex min-h-screen flex-col bg-cover bg-center"
@@ -332,13 +314,11 @@ export default function Home() {
               How to Play
             </button>
             {/* Global error (not auth-related) */}
-            {error &&
-              !error.toLowerCase().includes("firebase") && // Show non-auth errors here
-              user && (
-                <div className="text-red-400 bg-red-900/50 p-3 rounded-lg text-center w-full">
-                  {error}
-                </div>
-              )}
+            {error && !error.toLowerCase().includes("firebase") && user && (
+              <div className="text-red-400 bg-red-900/50 p-3 rounded-lg text-center w-full">
+                {error}
+              </div>
+            )}
 
             <div className="flex flex-col gap-4 sm:gap-6 w-full">
               {/* --- Play Local Section --- */}
@@ -376,7 +356,7 @@ export default function Home() {
                     Create Online Game
                   </h2>
                   <button
-                    onClick={() => handleCreateGame()} // Ensure no params are passed
+                    onClick={() => handleCreateGame()}
                     disabled={loading || !user}
                     className="w-full px-6 py-3 bg-green-600/80 text-white rounded-lg text-xl font-semibold transition-all hover:bg-green-500/80 hover:scale-105 active:scale-95 disabled:bg-gray-500 disabled:opacity-70 disabled:cursor-not-allowed"
                     title={!user ? "Please log in first" : ""}
@@ -402,7 +382,7 @@ export default function Home() {
                     className="w-full px-4 py-3 bg-white/10 text-white placeholder-white/50 rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center tracking-[0.2em] transition-all"
                   />
                   <button
-                    onClick={() => handleJoinGame()} // Ensure no params are passed
+                    onClick={() => handleJoinGame()}
                     disabled={loading || !user || gameIdToJoin.length !== 6}
                     className="w-full px-6 py-3 bg-blue-600/80 text-white rounded-lg text-xl font-semibold transition-all hover:bg-blue-500/80 hover:scale-105 active:scale-95 disabled:bg-gray-500 disabled:opacity-70 disabled:cursor-not-allowed"
                     title={

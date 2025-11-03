@@ -1,21 +1,13 @@
 "use client";
 
-import { FaCog, FaTimes, FaPaperPlane } from "react-icons/fa"; // Added FaPaperPlane
-import { CardComponent } from "@/app/Card"; // Use alias if configured
+import { FaCog, FaTimes, FaPaperPlane } from "react-icons/fa";
+import { CardComponent } from "@/app/Card";
 import { useRouter, useParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-// Correct path assuming game-types is inside app/game/
-import {
-  Color,
-  cardBackDesigns,
-  Player,
-  // Import Player
-} from "../game-types";
-import type { Card } from "../../game-logic"; // <-- ADD this line to import Card correctly
+import { Color, cardBackDesigns, Player } from "../game-types";
+import type { Card } from "../../game-logic";
 import { useMultiplayerUnoGame } from "./useMultiplayerUnoGame";
 
-// --- NEW ---
-// Import firebase functions needed for friend invites
 import {
   getUserDocRef,
   getDoc,
@@ -23,7 +15,6 @@ import {
   User,
 } from "../../lib/firebase";
 
-// Define User Profile type (can be moved to a shared types file)
 interface UserProfile {
   id: string;
   uid: string;
@@ -33,16 +24,14 @@ interface UserProfile {
   pendingRequests: string[];
   sentRequests: string[];
 }
-// --- END NEW ---
 
 function Game() {
   const router = useRouter();
   const params = useParams();
   const gameId = Array.isArray(params.gameId)
     ? params.gameId[0]
-    : params.gameId ?? ""; // Ensure gameId is a string
+    : params.gameId ?? "";
 
-  // === Core Game State and Logic from Hook ===
   const {
     game,
     userId,
@@ -55,9 +44,7 @@ function Game() {
     callUno,
     leaveGame,
   } = useMultiplayerUnoGame(gameId);
-  // ===========================================
 
-  // === UI-Only State ===
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [cardBack, setCardBack] =
     useState<keyof typeof cardBackDesigns>("default");
@@ -66,22 +53,18 @@ function Game() {
     useState(false);
   const [showCardSuggestions, setShowCardSuggestions] = useState(true);
 
-  // --- NEW Invite State ---
   const [friendsDetails, setFriendsDetails] = useState<UserProfile[]>([]);
-  const [sentInvites, setSentInvites] = useState<string[]>([]); // Track sent invites for this session
-  // --- END NEW Invite State ---
+  const [sentInvites, setSentInvites] = useState<string[]>([]);
 
-  // Effect to clear local messages
   useEffect(() => {
     if (localMessage) {
       const timer = setTimeout(() => {
         setLocalMessage(null);
-      }, 2000); // Show for 2 seconds
+      }, 2000);
       return () => clearTimeout(timer);
     }
   }, [localMessage]);
 
-  // Reset UNO button clicked state when turn changes *to this player*
   useEffect(() => {
     if (
       game &&
@@ -92,7 +75,6 @@ function Game() {
     }
   }, [game?.currentPlayerIndex, userId, game?.players]);
 
-  // --- NEW Effect to fetch friends for invite list ---
   useEffect(() => {
     if (userId && game?.status === "waiting") {
       const fetchFriends = async () => {
@@ -116,10 +98,8 @@ function Game() {
       };
       fetchFriends();
     }
-  }, [userId, game?.status]); // Re-fetch if user or game status changes
-  // --- END NEW Effect ---
+  }, [userId, game?.status]);
 
-  // --- Render Loading/Error States ---
   if (error) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-gray-900 text-white p-8">
@@ -143,7 +123,6 @@ function Game() {
     );
   }
 
-  // --- Derived State (Calculated from `game` state) ---
   const user = game.players.find((p) => p.uid === userId);
   const player = game.players.find((p) => p.uid === userId);
   const opponents = game.players.filter((p) => p.uid !== userId);
@@ -163,9 +142,8 @@ function Game() {
   const showUnoButton =
     isPlayerTurn && player?.hand.length === 2 && !isAwaitingColorChoice;
 
-  // Helper function to determine if a card is playable
   const isCardPlayableLocal = (card: Card, topCard: Card | null): boolean => {
-    if (!topCard) return true; // Should not happen in a started game
+    if (!topCard) return true;
     const effectiveColor = game.chosenColor || topCard.color;
     if (card.color === "black") return true;
     if (card.color === effectiveColor) return true;
@@ -177,7 +155,6 @@ function Game() {
     player?.hand.some((card) => isCardPlayableLocal(card, topOfDiscard)) ??
     false;
 
-  // --- UI Handlers ---
   const handlePlayCard = (card: Card, index: number) => {
     if (!isPlayerTurn) {
       setLocalMessage("It's not your turn!");
@@ -220,27 +197,22 @@ function Game() {
     router.push("/");
   };
 
-  // --- NEW Invite Handler ---
   const handleSendInvite = async (friendId: string) => {
     if (!user || !player || !gameId) return;
     try {
-      // Immediately mark as invited to disable the button
       setSentInvites((prev) => [...prev, friendId]);
       await sendGameInvite(user.uid, player.name, gameId, friendId);
-      setSentInvites((prev) => [...prev, friendId]); // Mark as invited
+      setSentInvites((prev) => [...prev, friendId]);
 
-      // After 5 seconds, allow the user to be invited again
       setTimeout(() => {
         setSentInvites((prev) => prev.filter((id) => id !== friendId));
       }, 5000);
     } catch (err) {
       console.error("Error sending invite:", err);
-      // Optionally show a local error message
-      setSentInvites((prev) => prev.filter((id) => id !== friendId)); // Re-enable on error
+      setSentInvites((prev) => prev.filter((id) => id !== friendId));
     }
   };
 
-  // --- Render Game UI ---
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-between p-2 md:p-4 bg-linear-to-br from-gray-900 to-gray-800 text-white overflow-hidden">
       {/* Opponents' Hands Area */}
@@ -253,7 +225,7 @@ function Game() {
             <h2
               className={`text-sm md:text-lg font-bold mb-1 text-center transition-all truncate max-w-[100px] md:max-w-none ${
                 game.players[game.currentPlayerIndex]?.id === opponent.id
-                  ? "text-yellow-300 scale-105" // Highlight current opponent
+                  ? "text-yellow-300 scale-105"
                   : "text-white/50"
               }`}
             >
@@ -405,13 +377,13 @@ function Game() {
         {showUnoButton && (
           <div className="absolute -top-10 md:-top-12 left-1/2 -translate-x-1/2 z-20">
             <button
-              onClick={handleCallUno} // Use new handler
-              disabled={unoButtonClickedThisTurn} // Disable after clicking once per turn
+              onClick={handleCallUno}
+              disabled={unoButtonClickedThisTurn}
               className={`px-6 py-3 rounded-full font-bold text-xl transition-all shadow-lg border-2 border-black transform active:scale-95
                          ${
                            unoButtonClickedThisTurn
-                             ? "bg-green-500 text-white scale-105 cursor-default" // Style for after click
-                             : "bg-yellow-400 text-black animate-pulse hover:scale-110" // Style before click
+                             ? "bg-green-500 text-white scale-105 cursor-default"
+                             : "bg-yellow-400 text-black animate-pulse hover:scale-110"
                          }`}
               title={unoButtonClickedThisTurn ? "UNO Called!" : "Call UNO!"}
             >
@@ -434,8 +406,6 @@ function Game() {
                 showCardSuggestions && canPlayerAct && isPlayable;
               const isClickable = canPlayerAct && isPlayable;
 
-              // When suggestions are off, all cards are fully visible.
-              // When on, non-playable cards are dimmed.
               const cardClassName =
                 showCardSuggestions && !isClickable
                   ? "opacity-50 cursor-not-allowed"

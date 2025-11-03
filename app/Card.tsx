@@ -13,8 +13,6 @@ interface CardProps {
 
 type CardValue = Card["value"];
 
-// This `colorMap` is a helper object. It maps the "color" property of a card
-// to a specific hex color for the background, making them more vibrant.
 const colorMap: Record<Card["color"], string> = {
   red: "#ff5555",
   green: "#55aa55",
@@ -28,7 +26,7 @@ const textColorMap: Record<Card["color"], string> = {
   green: "text-[#55aa55]",
   blue: "text-[#5555ff]",
   yellow: "text-[#ffaa00]",
-  black: "text-white", // Not used in center
+  black: "text-white",
 };
 
 const SpecialCard = ({
@@ -115,7 +113,7 @@ export const CardComponent = ({
       case "draw-two":
         return "+2";
       case "wild":
-        return null; // Wild cards don't have corner values
+        return null;
       case "wild-draw-four":
         return "+4";
       default:

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { FaUser } from "react-icons/fa";
 import type { User } from "firebase/auth";
 
-// Define User Profile type to be used in props
 interface UserProfile {
   id: string;
   uid: string;
@@ -19,7 +18,7 @@ interface HeaderProps {
   user: User | null;
   userProfile: UserProfile | null;
   friendsDetails: UserProfile[];
-  pendingRequestsDetails: UserProfile[]; // Keep for notification logic
+  pendingRequestsDetails: UserProfile[];
 }
 
 export const Header = ({
@@ -30,7 +29,7 @@ export const Header = ({
 }: HeaderProps) => {
   return (
     <div className="flex justify-between items-center w-full mb-4 sm:mb-6">
-      <h1 className="text-5xl sm:text-5xl md:text-6xl font-bold text-white tracking-[0.5rem] sm:tracking-[1rem] -mr-[0.5rem] sm:-mr-[1rem]">
+      <h1 className="text-5xl sm:text-5xl md:text-6xl font-bold text-white tracking-[0.5rem] sm:tracking-[1rem] -mr-2 sm:-mr-4">
         <span className="heading u">U</span>
         <span className="heading n">N</span>
         <span className="heading o">O</span>

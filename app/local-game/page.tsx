@@ -1,68 +1,48 @@
 "use client";
 
 import { FaCog, FaTimes } from "react-icons/fa";
-import { CardComponent } from "../Card"; // Correct path to Card component
+import { CardComponent } from "../Card";
 import { useRouter } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import {
-  cardBackDesigns,
-  Color, // Import Color
-} from "../game/game-types"; // Correct path
-import type { Card } from "../game-logic"; // Import Card type from game-logic
-import { useUnoGame } from "./useUnoGame"; // Correct path
+import { cardBackDesigns, Color } from "../game/game-types";
+import type { Card } from "../game-logic";
+import { useUnoGame } from "./useUnoGame";
 
-// --- Game Component remains largely the same, just consumes the hook ---
 function Game() {
   const router = useRouter();
-
-  // Setup game parameters from URL
-  // For local game, always 2 players (1 human, 1 computer)
   const numPlayers = 2;
 
-  // === Core Game State and Logic from Hook ===
   const {
     players,
-    deck, // Get deck length if needed
+    deck,
     discardPile,
     topOfDiscard,
     currentPlayerIndex,
     winner,
     isColorPickerOpen,
-    // isUnoState, // Removed, UI will calculate
-    // playerCalledUno, // Internal state, not needed for UI directly
     gameMessage,
     animatedCard,
     isPlayerTurn,
     playCard,
     drawCard,
     callUno,
-    playerCalledUno, // Need this to disable the button after click
+    playerCalledUno,
     selectColor,
     startGame,
-    // setGameMessage, // Managed internally by the hook now
   } = useUnoGame(numPlayers);
-  // ===========================================
 
-  // === UI-Only State ===
-  // Timer is optional for local play, let's remove it for simplicity first
-  // const [timeLeft, setTimeLeft] = useState(45);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [cardBack, setCardBack] =
     useState<keyof typeof cardBackDesigns>("default");
   const [showCardSuggestions, setShowCardSuggestions] = useState(true);
 
-  // const turnNumber = useRef(0); // If timer were used
-
-  // --- Effects for UI (like clearing messages are now inside the hook) ---
-
   const player = players[0];
   const opponents = players.slice(1);
-  if (!player) return null; // Still loading initial state
+  if (!player) return null;
 
-  // Helper function to determine if a card is playable
   const isCardPlayable = (card: Card, topCard: Card | null): boolean => {
-    if (!topCard) return true; // Can play anything if discard is empty
-    if (card.color === "black") return true; // Wild cards are always playable
+    if (!topCard) return true;
+    if (card.color === "black") return true;
     if (card.color === topCard.color) return true;
     if (card.value === topCard.value) return true;
     return false;
@@ -82,9 +62,7 @@ function Game() {
           <div key={opponent.id} className="flex flex-col items-center px-1">
             <h2
               className={`text-sm md:text-lg font-bold mb-1 text-center transition-all truncate max-w-[100px] md:max-w-none ${
-                !isPlayerTurn
-                  ? "text-yellow-300 scale-105" // Highlight opponent on their turn
-                  : "text-white/50"
+                !isPlayerTurn ? "text-yellow-300 scale-105" : "text-white/50"
               }`}
             >
               {opponent.name} ({opponent.hand.length})
@@ -117,7 +95,7 @@ function Game() {
         {/* Deck */}
         <div className="flex flex-col items-center">
           <p className="text-sm md:text-base mb-1 md:mb-2 font-semibold">
-            Deck ({deck.length}) {/* Show deck count */}
+            Deck ({deck.length})
           </p>
           <button
             onClick={isPlayerTurn ? drawCard : undefined}
@@ -168,12 +146,11 @@ function Game() {
           </p>
           <div className="relative w-28 h-40">
             {topOfDiscard ? (
-              // Ensure discard pile card is not clickable and maintains size
               <div className="w-full h-full">
                 <CardComponent card={topOfDiscard} className="shadow-lg" />
               </div>
             ) : (
-              <div className="w-full h-full rounded-lg bg-gray-700 border border-gray-500"></div> // Placeholder if empty initially
+              <div className="w-full h-full rounded-lg bg-gray-700 border border-gray-500"></div>
             )}
             {/* Animated Card for Play/Draw */}
             {animatedCard && animatedCard.type === "play" && (
@@ -222,12 +199,12 @@ function Game() {
           <div className="flex justify-center mb-2">
             <button
               onClick={callUno}
-              disabled={playerCalledUno} // Disable if already called
+              disabled={playerCalledUno}
               className={`px-6 py-3 rounded-full font-bold text-xl transition-all shadow-lg border-2 border-black transform active:scale-95
                          ${
                            playerCalledUno
-                             ? "bg-green-500 text-white scale-105 cursor-default" // Style for after click
-                             : "bg-yellow-400 text-black animate-pulse hover:scale-110" // Style before click
+                             ? "bg-green-500 text-white scale-105 cursor-default"
+                             : "bg-yellow-400 text-black animate-pulse hover:scale-110"
                          }`}
               title={playerCalledUno ? "UNO Called!" : "Call UNO!"}
             >
@@ -250,8 +227,6 @@ function Game() {
                   showCardSuggestions && canPlayerAct && isPlayable;
                 const isClickable = canPlayerAct && isPlayable;
 
-                // When suggestions are off, all cards are fully visible.
-                // When on, non-playable cards are dimmed.
                 const cardClassName =
                   showCardSuggestions && !isClickable
                     ? "opacity-50 cursor-not-allowed"
@@ -287,7 +262,7 @@ function Game() {
             </h2>
             <div className="flex gap-4 justify-center">
               <button
-                onClick={startGame} // Use handler from hook
+                onClick={startGame}
                 className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-xl font-semibold"
               >
                 Play Again
@@ -304,20 +279,18 @@ function Game() {
       )}
 
       {/* Game Message Popup */}
-      {gameMessage &&
-        !isColorPickerOpen && ( // Don't show messages while picker is open
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-lg mt-32 md:mt-40 z-50 pointer-events-none">
-            <div className="bg-black/70 backdrop-blur-md text-white font-bold text-xl md:text-2xl px-6 py-4 md:px-8 md:py-6 rounded-2xl shadow-2xl animate-pulse text-center">
-              {gameMessage}
-            </div>
+      {gameMessage && !isColorPickerOpen && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-lg mt-32 md:mt-40 z-50 pointer-events-none">
+          <div className="bg-black/70 backdrop-blur-md text-white font-bold text-xl md:text-2xl px-6 py-4 md:px-8 md:py-6 rounded-2xl shadow-2xl animate-pulse text-center">
+            {gameMessage}
           </div>
-        )}
+        </div>
+      )}
 
       {/* Settings Modal */}
       {isSettingsOpen && (
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-2 p-4">
           <div className="bg-gray-800 border border-white/20 rounded-xl p-6 text-white shadow-2xl w-full max-w-md">
-            {/* ... (Modal content is similar, just Exit button) ... */}
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold">Settings</h2>
               <button
@@ -398,46 +371,42 @@ function Game() {
       )}
 
       {/* Color Picker Modal */}
-      {isColorPickerOpen &&
-        isPlayerTurn && ( // Only show for player turn
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white/10 border border-white/20 rounded-xl p-6 md:p-8 text-center shadow-2xl">
-              <h2 className="text-2xl md:text-3xl font-bold mb-6">
-                Choose a color
-              </h2>
-              <div className="flex flex-wrap justify-center gap-3 md:gap-4">
-                <button
-                  onClick={() => selectColor("red")}
-                  className="w-16 h-16 md:w-24 md:h-24 rounded-full bg-red-500 hover:scale-110 transition-transform shadow-lg border-2 border-white/50"
-                  aria-label="Choose Red"
-                ></button>
-                {/* ... other color buttons ... */}
-                <button
-                  onClick={() => selectColor("green")}
-                  className="w-16 h-16 md:w-24 md:h-24 rounded-full bg-green-500 hover:scale-110 transition-transform shadow-lg border-2 border-white/50"
-                  aria-label="Choose Green"
-                ></button>
-                <button
-                  onClick={() => selectColor("blue")}
-                  className="w-16 h-16 md:w-24 md:h-24 rounded-full bg-blue-500 hover:scale-110 transition-transform shadow-lg border-2 border-white/50"
-                  aria-label="Choose Blue"
-                ></button>
-                <button
-                  onClick={() => selectColor("yellow")}
-                  className="w-16 h-16 md:w-24 md:h-24 rounded-full bg-yellow-400 hover:scale-110 transition-transform shadow-lg border-2 border-white/50"
-                  aria-label="Choose Yellow"
-                ></button>
-              </div>
+      {isColorPickerOpen && isPlayerTurn && (
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white/10 border border-white/20 rounded-xl p-6 md:p-8 text-center shadow-2xl">
+            <h2 className="text-2xl md:text-3xl font-bold mb-6">
+              Choose a color
+            </h2>
+            <div className="flex flex-wrap justify-center gap-3 md:gap-4">
+              <button
+                onClick={() => selectColor("red")}
+                className="w-16 h-16 md:w-24 md:h-24 rounded-full bg-red-500 hover:scale-110 transition-transform shadow-lg border-2 border-white/50"
+                aria-label="Choose Red"
+              ></button>
+              <button
+                onClick={() => selectColor("green")}
+                className="w-16 h-16 md:w-24 md:h-24 rounded-full bg-green-500 hover:scale-110 transition-transform shadow-lg border-2 border-white/50"
+                aria-label="Choose Green"
+              ></button>
+              <button
+                onClick={() => selectColor("blue")}
+                className="w-16 h-16 md:w-24 md:h-24 rounded-full bg-blue-500 hover:scale-110 transition-transform shadow-lg border-2 border-white/50"
+                aria-label="Choose Blue"
+              ></button>
+              <button
+                onClick={() => selectColor("yellow")}
+                className="w-16 h-16 md:w-24 md:h-24 rounded-full bg-yellow-400 hover:scale-110 transition-transform shadow-lg border-2 border-white/50"
+                aria-label="Choose Yellow"
+              ></button>
             </div>
           </div>
-        )}
+        </div>
+      )}
     </main>
   );
 }
 
-// Suspense wrapper remains the same
 export default function LocalGamePage() {
-  // Renamed component
   return (
     <Suspense
       fallback={
