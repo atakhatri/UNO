@@ -43,7 +43,7 @@ const SpecialCard = ({
     case "skip":
       return (
         <p
-          className={`${baseIconClass} text-black/40 mb-8 mr-1 font-extrabold scale-120`}
+          className={`${baseIconClass} text-black/40 font-extrabold scale-120 flex items-center justify-center`}
         >
           ⊘
         </p>
