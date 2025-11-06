@@ -361,7 +361,7 @@ export default function ProfilePage() {
                       placeholder="Search by name or User ID"
                       value={searchQuery}
                       onChange={(e) => {
-                        setSearchQuery(e.target.value);
+                        setSearchQuery(e.target.value.replace(/\s/g, ""));
                         if (e.target.value.trim() === "") setSearchResults([]);
                       }}
                       className="flex-1 px-4 py-2 bg-white/10 text-white placeholder-white/50 rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -506,7 +506,9 @@ export default function ProfilePage() {
                     type="text"
                     placeholder="Display Name"
                     value={playerName}
-                    onChange={(e) => setPlayerName(e.target.value)}
+                    onChange={(e) =>
+                      setPlayerName(e.target.value.replace(/\s/g, ""))
+                    }
                     className="w-full px-4 py-3 bg-white/10 text-white placeholder-white/50 rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 )}
@@ -514,14 +516,16 @@ export default function ProfilePage() {
                   type="email"
                   placeholder="Email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => setEmail(e.target.value.replace(/\s/g, ""))}
                   className="w-full px-4 py-3 bg-white/10 text-white placeholder-white/50 rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <input
                   type="password"
                   placeholder="Password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) =>
+                    setPassword(e.target.value.replace(/\s/g, ""))
+                  }
                   className="w-full px-4 py-3 bg-white/10 text-white placeholder-white/50 rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 {error && (
