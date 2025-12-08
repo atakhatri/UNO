@@ -14,6 +14,8 @@ export const metadata: Metadata = {
     "Play UNO Online with friends or against the computer. A fast-paced, multiplayer card game experience accessible directly in your browser. No download required.",
   keywords: [
     "UNO",
+    "UNO by Ata",
+    "UNO Multiplayer",
     "UNO Online",
     "Multiplayer Card Game",
     "Play UNO with friends",
@@ -51,8 +53,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google:
-      "google-site-verification=0aJ_VQaPAaJmoDUS3z9VHmY5fzh9e5o9xUj8McYqrGE",
+    google: "=0aJ_VQaPAaJmoDUS3z9VHmY5fzh9e5o9xUj8McYqrGE",
   },
 };
 
