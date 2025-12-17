@@ -253,11 +253,31 @@ export default function Home() {
     }
   };
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "UNO Online",
+    applicationCategory: "Game",
+    operatingSystem: "Web Browser",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+    },
+    description:
+      "Play the classic UNO card game online for free. Single player and multiplayer modes available.",
+  };
+
   return (
     <main
       className="flex min-h-screen flex-col bg-cover bg-center"
       style={{ backgroundImage: "url('/main_bg.png')" }}
     >
+      {/* Inject JSON-LD */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Full-screen semi-transparent container */}
       <div className="relative flex flex-col bg-black/70 w-full min-h-screen p-4 sm:p-6 md:p-8">
         <Header

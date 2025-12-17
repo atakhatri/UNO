@@ -1,26 +1,27 @@
-import { MetadataRoute } from "next";
+import { MetadataRoute } from 'next'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-    const baseUrl = "https://uno-ebon.vercel.app";
+    const baseUrl = 'https://uno-ebon.vercel.app'
 
     return [
         {
             url: baseUrl,
             lastModified: new Date(),
-            changeFrequency: "monthly",
+            changeFrequency: 'daily',
             priority: 1,
         },
         {
             url: `${baseUrl}/local-game`,
             lastModified: new Date(),
-            changeFrequency: "monthly",
+            changeFrequency: 'weekly',
             priority: 0.8,
         },
         {
             url: `${baseUrl}/profile`,
             lastModified: new Date(),
-            changeFrequency: "yearly",
+            changeFrequency: 'monthly',
             priority: 0.5,
         },
-    ];
+        // Add a rules page here if you create one later
+    ]
 }
