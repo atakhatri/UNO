@@ -170,6 +170,7 @@ export function useMultiplayerUnoGame(gameId: string) {
                     pendingUnoCallCheck: null,
                     gameMessage: `${playerToPenalize.name} forgot to call UNO! Draws 2.`,
                     playerInUnoState: null,
+                    chosenColor: game.chosenColor,
                 });
             } else {
                 await clearUnoCheck();
@@ -438,11 +439,16 @@ export function useMultiplayerUnoGame(gameId: string) {
                 return;
             }
 
-            let updates: Partial<GameState> = { chosenColor: color };
+            let updates: Partial<GameState> = { chosenColor: null };
             let nextPlayerIndex = getNextPlayerIndex(currentPlayerIndex, game.playDirection);
             let newDeck = [...(game.deck || [])];
             let newDiscard = [...(game.discardPile || [])];
             let newPlayers = [...game.players];
+
+            if (newDiscard.length > 0) {
+                const lastIndex = newDiscard.length - 1;
+                newDiscard[lastIndex] = { ...newDiscard[lastIndex], color: color };
+            }
 
             if (playedCard.value === "wild-draw-four") {
                 const drawFourResult = drawCardsForPlayer(nextPlayerIndex, 4, newDeck, newDiscard);
@@ -511,7 +517,7 @@ export function useMultiplayerUnoGame(gameId: string) {
                 discardPile: drawResult.updatedDiscard,
                 currentPlayerIndex: newCurrentPlayerIndex,
                 gameMessage: `${currentPlayer.name} drew a card. ${newPlayers[newCurrentPlayerIndex]?.name ?? ''}'s turn.`,
-                chosenColor: null,
+                chosenColor: game.chosenColor,
                 pendingUnoCallCheck: null,
             };
 
