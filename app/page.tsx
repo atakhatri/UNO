@@ -211,8 +211,8 @@ export default function Home() {
         setLoading(false);
         return;
       }
-      if (gameData.players.length >= 4) {
-        setError("This game is full (max 4 players).");
+      if (gameData.players.length >= 12) {
+        setError("This game is full (max 12 players).");
         if (inviteGameId) await deleteGameInvite(user.uid, inviteGameId);
         setLoading(false);
         return;

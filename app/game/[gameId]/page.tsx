@@ -216,39 +216,41 @@ function Game() {
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-between p-2 md:p-4 bg-linear-to-br from-gray-900 to-gray-800 text-white overflow-hidden">
       {/* Opponents' Hands Area */}
-      <div className="w-full flex justify-around mb-4 md:mb-0">
-        {opponents.map((opponent) => (
-          <div
-            key={opponent.id}
-            className="flex flex-col items-center px-1 relative"
-          >
-            <h2
-              className={`text-sm md:text-lg font-bold mb-1 text-center transition-all truncate max-w-[100px] md:max-w-none ${
-                game.players[game.currentPlayerIndex]?.id === opponent.id
-                  ? "text-yellow-300 scale-105"
-                  : "text-white/50"
-              }`}
+      <div className="w-full max-w-6xl mx-auto overflow-x-auto mb-4 md:mb-0 px-2">
+        <div className="flex justify-center items-start gap-4 md:gap-8 w-max mx-auto px-4 py-2">
+          {opponents.map((opponent) => (
+            <div
+              key={opponent.id}
+              className="flex flex-col items-center relative"
             >
-              {opponent.name} ({opponent.hand.length})
-            </h2>
-            {/* --- UNO State Indicator for Opponent --- */}
-            {game.playerInUnoState === opponent.uid && (
-              <span className="absolute -top-4 md:-top-5 left-1/2 -translate-x-1/2 bg-yellow-400 text-black text-xs md:text-sm font-bold px-2 py-0.5 rounded-full animate-pulse">
-                UNO!
-              </span>
-            )}
-            <div className="flex justify-center h-24 md:h-28 items-center">
-              {/* Simple card back showing count */}
-              <div
-                className={`w-16 h-24 md:w-20 md:h-28 ${cardBackDesigns[cardBack]} rounded-md flex items-center justify-center border border-black shadow-md`}
+              <h2
+                className={`text-sm md:text-lg font-bold mb-1 text-center transition-all truncate max-w-[100px] md:max-w-none ${
+                  game.players[game.currentPlayerIndex]?.id === opponent.id
+                    ? "text-yellow-300 scale-105"
+                    : "text-white/50"
+                }`}
               >
-                <span className="font-bold text-base md:text-lg text-white">
-                  {opponent.hand.length}
+                {opponent.name} ({opponent.hand.length})
+              </h2>
+              {/* --- UNO State Indicator for Opponent --- */}
+              {game.playerInUnoState === opponent.uid && (
+                <span className="absolute -top-4 md:-top-5 left-1/2 -translate-x-1/2 bg-yellow-400 text-black text-xs md:text-sm font-bold px-2 py-0.5 rounded-full animate-pulse">
+                  UNO!
                 </span>
+              )}
+              <div className="flex justify-center h-24 md:h-28 items-center">
+                {/* Simple card back showing count */}
+                <div
+                  className={`w-16 h-24 md:w-20 md:h-28 ${cardBackDesigns[cardBack]} rounded-md flex items-center justify-center border border-black shadow-md`}
+                >
+                  <span className="font-bold text-base md:text-lg text-white">
+                    {opponent.hand.length}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Turn Indicator */}
@@ -445,7 +447,7 @@ function Game() {
             </p>
             <div className="mb-6 text-left bg-black/20 p-3 rounded">
               <h3 className="font-semibold mb-2">
-                Players ({game.players.length}/4):
+                Players ({game.players.length}/12):
               </h3>
               <ul className="list-disc list-inside space-y-1">
                 {game.players.map((p) => (
@@ -508,7 +510,7 @@ function Game() {
                     : "Start the game!"
                 }
               >
-                Start Game ({game.players.length}/4)
+                Start Game ({game.players.length}/12)
               </button>
             )}
             {!isHost && (
