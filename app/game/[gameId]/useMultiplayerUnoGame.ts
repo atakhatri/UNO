@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { GameState, Player, Color } from "../game-types";
 import type { Card } from "../../game-logic";
 import {
@@ -11,6 +11,7 @@ import {
 } from "../../game-logic";
 import { db, getUserId, getGameDocRef } from "../../lib/firebase";
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { updateAchievement, resetStreaks } from "../../lib/achievements";
 
 export function useMultiplayerUnoGame(gameId: string) {
     const [game, setGame] = useState<GameState | null>(null);
@@ -18,6 +19,15 @@ export function useMultiplayerUnoGame(gameId: string) {
     const [error, setError] = useState<string | null>(null);
     const [isAwaitingColorChoice, setIsAwaitingColorChoice] = useState(false);
     const [localUnoButtonPressed, setLocalUnoButtonPressed] = useState(false);
+
+    // Session stats for achievements (reset per game)
+    const sessionStats = useRef({
+        specialCardUsed: false,
+        plusFourCount: 0,
+        consecutiveSkips: 0,
+        unoCallCount: 0
+    });
+    const prevGameStatus = useRef<string | null>(null);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -42,6 +52,25 @@ export function useMultiplayerUnoGame(gameId: string) {
                     const gameData = doc.data() as GameState;
                     setGame(gameData);
                     setError(null);
+
+                    // --- GAME STATUS CHANGE HANDLING ---
+                    // Reset stats if a new game starts
+                    if (gameData.status === 'playing' && prevGameStatus.current !== 'playing') {
+                        sessionStats.current = { specialCardUsed: false, plusFourCount: 0, consecutiveSkips: 0, unoCallCount: 0 };
+                    }
+
+                    // Check for Loss (Game Finished and I am not the winner)
+                    if (gameData.status === 'finished' && prevGameStatus.current === 'playing') {
+                        if (userId && gameData.winnerId && gameData.winnerId !== userId) {
+                            // I lost: Reset streaks
+                            resetStreaks(userId);
+                            // Achievement: Unlucky (Called UNO 5+ times and lost)
+                            if (sessionStats.current.unoCallCount >= 5) {
+                                updateAchievement(userId, 'unlucky', 1);
+                            }
+                        }
+                    }
+                    prevGameStatus.current = gameData.status;
 
                     const isMyTurnNow =
                         gameData.status === "playing" &&
@@ -172,6 +201,7 @@ export function useMultiplayerUnoGame(gameId: string) {
                     playerInUnoState: null,
                     chosenColor: game.chosenColor,
                 });
+                updateAchievement(playerToPenalize.uid, 'dumbass-1', 1);
             } else {
                 await clearUnoCheck();
             }
@@ -327,9 +357,15 @@ export function useMultiplayerUnoGame(gameId: string) {
                 type: "play",
             };
 
+            // Achievement Tracking: Pacifist (Check if special card)
+            if (['skip', 'reverse', 'draw-two', 'wild', 'wild-draw-four'].includes(card.value)) {
+                sessionStats.current.specialCardUsed = true;
+            }
+
             if (currentPlayer.hand.length === 2 && newHand.length === 1) {
                 if (localUnoButtonPressed) {
                     console.log("UNO called successfully by", currentPlayer.name);
+                    sessionStats.current.unoCallCount += 1; // Achievement: Unlucky tracker
                     updates.playerInUnoState = userId;
                     updates.pendingUnoCallCheck = null;
                     updates.gameMessage = `${currentPlayer.name} calls UNO! `;
@@ -354,6 +390,28 @@ export function useMultiplayerUnoGame(gameId: string) {
                 updates.gameMessage += `${currentPlayer.name} Wins!`;
                 updates.playerInUnoState = null;
                 updates.pendingUnoCallCheck = null;
+
+                // Achievements: Winning
+                updateAchievement(userId, 'conq-1', 1);
+                updateAchievement(userId, 'conq-2', 1);
+                updateAchievement(userId, 'conq-3', 1);
+                if (game.players.length === 4) {
+                    updateAchievement(userId, 'social-1', 1);
+                }
+                // Achievement: Streak (I, II, III)
+                updateAchievement(userId, 'streak-1', 1);
+                updateAchievement(userId, 'streak-2', 1);
+                updateAchievement(userId, 'streak-3', 1);
+
+                // Achievement: Pacifist
+                if (!sessionStats.current.specialCardUsed) {
+                    updateAchievement(userId, 'pacifist', 1);
+                }
+
+                if (card.value === 'wild-draw-four') {
+                    updateAchievement(userId, 'wild-1', 1);
+                }
+
                 const gameDocRef = getGameDocRef(gameId);
                 await updateDoc(gameDocRef, updates);
                 return;
@@ -369,10 +427,28 @@ export function useMultiplayerUnoGame(gameId: string) {
             if (card.color === "black") {
                 updates.currentPlayerIndex = game.currentPlayerIndex;
                 updates.gameMessage += `Choose a color.`;
+                if (card.value === 'wild-draw-four') {
+                    updateAchievement(userId, 'bomber-1', 1);
+                    updateAchievement(userId, 'bomber-2', 1);
+                    updateAchievement(userId, 'bomber-3', 1);
+                    // Achievement: Brutalist (10 +4s in one game)
+                    sessionStats.current.plusFourCount += 1;
+                    if (sessionStats.current.plusFourCount === 10) {
+                        updateAchievement(userId, 'brutalist', 1);
+                    }
+                } else {
+                    // Regular Wild
+                    updateAchievement(userId, 'lizard-1', 1);
+                    updateAchievement(userId, 'lizard-2', 1);
+                    updateAchievement(userId, 'lizard-3', 1);
+                }
             } else {
                 let drewCardsResult: { drawnCards: Card[], updatedDeck: Card[], updatedDiscard: Card[] } | null = null;
                 switch (card.value) {
                     case "draw-two":
+                        updateAchievement(userId, 'assaulter-1', 1);
+                        updateAchievement(userId, 'assaulter-2', 1);
+                        updateAchievement(userId, 'assaulter-3', 1);
                         drewCardsResult = drawCardsForPlayer(nextPlayerIndex, 2, updates.deck!, updates.discardPile!);
                         updates.deck = drewCardsResult.updatedDeck;
                         updates.discardPile = drewCardsResult.updatedDiscard;
@@ -390,16 +466,33 @@ export function useMultiplayerUnoGame(gameId: string) {
                         nextPlayerIndex = getNextPlayerIndex(game.currentPlayerIndex, game.playDirection, 2);
                         break;
                     case "skip":
+                        updateAchievement(userId, 'jammer-1', 1);
+                        updateAchievement(userId, 'jammer-2', 1);
+                        updateAchievement(userId, 'jammer-3', 1);
+                        // Achievement: Full Stop (3 skips in a row)
+                        sessionStats.current.consecutiveSkips += 1;
+                        if (sessionStats.current.consecutiveSkips === 3) {
+                            updateAchievement(userId, 'full-stop', 1);
+                        }
                         const skippedPlayerIndex = nextPlayerIndex;
+                        // Achievement: Denial (Skip player with UNO)
+                        if (currentPlayers[skippedPlayerIndex]?.hand.length === 1) {
+                            updateAchievement(userId, 'denial', 1);
+                        }
                         updates.gameMessage += `${currentPlayers[skippedPlayerIndex]?.name ?? 'Next player'} was skipped! `;
                         nextPlayerIndex = getNextPlayerIndex(game.currentPlayerIndex, game.playDirection, 2);
                         break;
                     case "reverse":
+                        updateAchievement(userId, 'turner-1', 1);
+                        updateAchievement(userId, 'turner-2', 1);
+                        updateAchievement(userId, 'turner-3', 1);
+                        sessionStats.current.consecutiveSkips = 0; // Reset skip streak
                         updates.playDirection = (game.playDirection * -1) as 1 | -1;
                         nextPlayerIndex = getNextPlayerIndex(game.currentPlayerIndex, updates.playDirection);
                         updates.gameMessage += "Play reversed! ";
                         break;
                     default:
+                        sessionStats.current.consecutiveSkips = 0; // Reset skip streak
                         break;
                 }
                 updates.players = currentPlayers;
