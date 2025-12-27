@@ -18,6 +18,8 @@ import {
   FaUserMinus,
   FaArrowLeft,
   FaQuestionCircle,
+  FaTrophy,
+  FaLevelUpAlt,
 } from "react-icons/fa";
 import type { User } from "firebase/auth";
 import {
@@ -37,6 +39,8 @@ import {
   declineFriendRequest,
   removeFriend,
 } from "../lib/firebase";
+import { ACHIEVEMENTS_LIST } from "../lib/achievements";
+import { getCurrentLevel } from "../lib/levels";
 
 interface UserProfile {
   id: string;
@@ -46,6 +50,9 @@ interface UserProfile {
   friends: string[];
   pendingRequests: string[];
   sentRequests: string[];
+  achievements?: Record<string, number>;
+  xp?: number;
+  wins?: number;
 }
 
 export default function ProfilePage() {
@@ -53,6 +60,8 @@ export default function ProfilePage() {
 
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [level, setLevel] = useState(1);
+  const [achievementPoints, setAchievementPoints] = useState(0);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [modalTab, setModalTab] = useState<"profile" | "friends">("profile");
@@ -91,6 +100,20 @@ export default function ProfilePage() {
         if (doc.exists()) {
           const data = doc.data() as UserProfile;
           setUserProfile({ ...data, id: doc.id });
+
+          setLevel(getCurrentLevel(data.xp || 0));
+
+          if (data.achievements) {
+            const points = ACHIEVEMENTS_LIST.reduce((acc, ach) => {
+              if ((data.achievements?.[ach.id] || 0) >= ach.maxProgress) {
+                return acc + ach.points;
+              }
+              return acc;
+            }, 0);
+            setAchievementPoints(points);
+          } else {
+            setAchievementPoints(0);
+          }
 
           if (data.friends && data.friends.length > 0) {
             const friendPromises = data.friends.map(async (friendId) => {
@@ -137,6 +160,8 @@ export default function ProfilePage() {
       setUserProfile(null);
       setFriendsDetails([]);
       setPendingRequestsDetails([]);
+      setAchievementPoints(0);
+      setLevel(1);
     }
   }, [user]);
 
@@ -284,19 +309,49 @@ export default function ProfilePage() {
             <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-8">
               {/* Left Column: Profile Info */}
               <div className="md:col-span-1 bg-gray-800/50 border border-white/20 rounded-xl p-2 sm:p-6 flex flex-col">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-16 h-16 text-white bg-blue-600 rounded-full flex items-center justify-center text-3xl font-bold">
-                    {user.displayName?.charAt(0).toUpperCase()}
+                <div className="flex items-center justify-between gap-4 mb-6">
+                  <div className="flex items-center gap-4 overflow-hidden">
+                    <div className="w-16 h-16 text-white bg-blue-600 rounded-full flex items-center justify-center text-3xl font-bold shrink-0">
+                      {user.displayName?.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="overflow-hidden">
+                      <h2 className="text-2xl font-bold text-white truncate">
+                        {user.displayName}
+                      </h2>
+                      <p className="text-xs text-white/60 break-all">
+                        {user.email}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-white truncate">
-                      {user.displayName}
-                    </h2>
-                    <p className="text-sm text-white/60 break-all">
-                      {user.email}
-                    </p>
+                  <Link
+                    href="/levels"
+                    className="flex flex-col items-center justify-center p-2 rounded-lg hover:bg-white/10 transition-colors shrink-0"
+                  >
+                    <span className="text-xs text-cyan-400 font-bold uppercase">
+                      Level
+                    </span>
+                    <span className="text-3xl font-black text-white">
+                      {level}
+                    </span>
+                  </Link>
+                </div>
+
+                <div className="mb-6 p-4 bg-linear-to-r from-yellow-900/20 to-transparent border border-yellow-500/20 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-yellow-500/10 rounded-lg">
+                      <FaTrophy className="text-yellow-400 text-xl" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-yellow-500/80 font-bold uppercase tracking-wider">
+                        Achievement Points
+                      </p>
+                      <p className="text-2xl font-black text-white">
+                        {achievementPoints}
+                      </p>
+                    </div>
                   </div>
                 </div>
+
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-white/70">
                     User ID

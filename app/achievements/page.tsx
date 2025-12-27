@@ -83,7 +83,15 @@ const AchievementCard = ({
   currentProgress: number;
   unlocked: boolean;
 }) => {
-  const { title, description, tier, icon: Icon, maxProgress, image } = def;
+  const {
+    title,
+    description,
+    tier,
+    icon: Icon,
+    maxProgress,
+    image,
+    points,
+  } = def;
 
   // Config
   const config = {
@@ -259,6 +267,19 @@ const AchievementCard = ({
         )}
       </div>
 
+      {/* Points Badge */}
+      <div className="absolute top-3 left-3">
+        <div
+          className={`px-2 py-1 rounded-md text-xs font-bold shadow-sm border backdrop-blur-md ${
+            unlocked
+              ? "bg-yellow-500/20 border-yellow-500/50 text-yellow-200"
+              : "bg-gray-900/60 border-gray-600 text-gray-400"
+          }`}
+        >
+          {points} PTS
+        </div>
+      </div>
+
       {/* Lock Overlay */}
       {!unlocked && (
         <div className="absolute top-3 right-3">
@@ -349,6 +370,11 @@ export default function AchievementsPage() {
   const unlockedCount = processedList.filter((a) => a.unlocked).length;
   const totalCount = processedList.length;
   const percentage = Math.round((unlockedCount / totalCount) * 100);
+  const earnedPoints = processedList.reduce(
+    (acc, curr) => acc + (curr.unlocked ? curr.points : 0),
+    0
+  );
+  const totalPoints = processedList.reduce((acc, curr) => acc + curr.points, 0);
 
   if (loading)
     return (
@@ -420,6 +446,13 @@ export default function AchievementsPage() {
                 {unlockedCount} / {totalCount}{" "}
                 <span className="text-sm font-normal text-slate-500">
                   Unlocked
+                </span>
+              </div>
+              <div className="text-lg font-bold text-yellow-400 mt-1 flex items-center gap-2">
+                <FaTrophy className="w-4 h-4" />
+                <span>{earnedPoints}</span>
+                <span className="text-sm font-normal text-slate-500">
+                  / {totalPoints} PTS
                 </span>
               </div>
             </div>

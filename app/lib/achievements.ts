@@ -1,6 +1,7 @@
 import {
     Crown, Zap, RotateCcw, Copy, Users, Ban, Flame, Image as ImageIcon,
-    AlertCircle, Bomb, Swords, Palette, Slash, Shield, Hammer, Octagon, Frown
+    AlertCircle, Bomb, Swords, Palette, Slash, Shield, Hammer, Octagon, Frown,
+    BanIcon
 } from 'lucide-react';
 import { increment, updateDoc } from 'firebase/firestore';
 import { getUserDocRef } from './firebase';
@@ -12,6 +13,7 @@ export interface AchievementDef {
     tier: 'bronze' | 'silver' | 'gold' | 'prestigious';
     icon: any; // Lucide icon component
     maxProgress: number; // e.g., 10 wins
+    points: number;
     image?: string; // Optional custom PNG path
 }
 
@@ -24,6 +26,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         tier: 'bronze',
         icon: Crown,
         maxProgress: 10,
+        points: 50,
     },
     {
         id: 'conq-2',
@@ -31,7 +34,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Win 50 matches.',
         tier: 'silver',
         icon: Crown,
-        maxProgress: 50
+        maxProgress: 50,
+        points: 250,
     },
     {
         id: 'conq-3',
@@ -39,7 +43,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Win 100 matches.',
         tier: 'gold',
         icon: Crown,
-        maxProgress: 100
+        maxProgress: 100,
+        points: 500,
     },
 
     // --- ACTIONS ---
@@ -49,7 +54,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Play a Wild Draw 4 as your last card.',
         tier: 'gold',
         icon: Zap,
-        maxProgress: 1
+        maxProgress: 1,
+        points: 500,
     },
     {
         id: 'no-u',
@@ -57,7 +63,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Reverse a Draw 2 back to the sender.',
         tier: 'silver',
         icon: RotateCcw,
-        maxProgress: 1
+        maxProgress: 1,
+        points: 250,
     },
     {
         id: 'denial',
@@ -65,7 +72,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Skip a player who has UNO.',
         tier: 'silver',
         icon: Ban,
-        maxProgress: 5
+        maxProgress: 5,
+        points: 250,
     },
 
     // --- SOCIAL / FUN ---
@@ -75,7 +83,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Play a game with 4 friends.',
         tier: 'bronze',
         icon: Users,
-        maxProgress: 1
+        maxProgress: 1,
+        points: 50,
     },
     {
         id: 'streak-1',
@@ -83,7 +92,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Win 3 games in a row.',
         tier: 'silver',
         icon: Flame,
-        maxProgress: 3
+        maxProgress: 3,
+        points: 250,
     },
     {
         id: 'streak-2',
@@ -91,7 +101,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Win 5 games in a row.',
         tier: 'gold',
         icon: Flame,
-        maxProgress: 5
+        maxProgress: 5,
+        points: 500,
     },
 
     // --- NEW ADDITIONS ---
@@ -101,7 +112,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Forgot to call UNO 25 times.',
         tier: 'silver',
         icon: AlertCircle,
-        maxProgress: 25
+        maxProgress: 25,
+        points: 250,
     },
     // +4 Bomber
     {
@@ -110,7 +122,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Used 50 +4s.',
         tier: 'bronze',
         icon: Bomb,
-        maxProgress: 50
+        maxProgress: 50,
+        points: 50,
     },
     {
         id: 'bomber-2',
@@ -118,7 +131,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Used 100 +4s.',
         tier: 'silver',
         icon: Bomb,
-        maxProgress: 100
+        maxProgress: 100,
+        points: 250,
     },
     {
         id: 'bomber-3',
@@ -126,7 +140,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Used 200 +4s.',
         tier: 'gold',
         icon: Bomb,
-        maxProgress: 200
+        maxProgress: 200,
+        points: 500,
     },
     // +2 Assaulter
     {
@@ -135,7 +150,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Used 50 +2s.',
         tier: 'bronze',
         icon: Swords,
-        maxProgress: 50
+        maxProgress: 50,
+        points: 50,
     },
     {
         id: 'assaulter-2',
@@ -143,7 +159,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Used 100 +2s.',
         tier: 'silver',
         icon: Swords,
-        maxProgress: 100
+        maxProgress: 100,
+        points: 250,
     },
     {
         id: 'assaulter-3',
@@ -151,7 +168,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Used 200 +2s.',
         tier: 'gold',
         icon: Swords,
-        maxProgress: 200
+        maxProgress: 200,
+        points: 500,
     },
     // The Lizard (Wilds)
     {
@@ -160,7 +178,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Used Wild Cards 50 times.',
         tier: 'bronze',
         icon: Palette,
-        maxProgress: 50
+        maxProgress: 50,
+        points: 50,
     },
     {
         id: 'lizard-2',
@@ -168,7 +187,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Used Wild Cards 100 times.',
         tier: 'silver',
         icon: Palette,
-        maxProgress: 100
+        maxProgress: 100,
+        points: 250,
     },
     {
         id: 'lizard-3',
@@ -176,7 +196,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Used Wild Cards 200 times.',
         tier: 'gold',
         icon: Palette,
-        maxProgress: 200
+        maxProgress: 200,
+        points: 500,
     },
     // The Jammer (Skips)
     {
@@ -184,24 +205,27 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         title: 'The Jammer I',
         description: 'Used Skips 50 times.',
         tier: 'bronze',
-        icon: Slash,
-        maxProgress: 50
+        icon: Ban,
+        maxProgress: 50,
+        points: 50,
     },
     {
         id: 'jammer-2',
         title: 'The Jammer II',
         description: 'Used Skips 100 times.',
         tier: 'silver',
-        icon: Slash,
-        maxProgress: 100
+        icon: Ban,
+        maxProgress: 100,
+        points: 250,
     },
     {
         id: 'jammer-3',
         title: 'The Jammer III',
         description: 'Used Skips 200 times.',
         tier: 'gold',
-        icon: Slash,
-        maxProgress: 200
+        icon: Ban,
+        maxProgress: 200,
+        points: 500,
     },
     // Quick Turner (Reverse)
     {
@@ -210,7 +234,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Used Reverse 50 times.',
         tier: 'bronze',
         icon: RotateCcw,
-        maxProgress: 50
+        maxProgress: 50,
+        points: 50,
     },
     {
         id: 'turner-2',
@@ -218,7 +243,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Used Reverse 100 times.',
         tier: 'silver',
         icon: RotateCcw,
-        maxProgress: 100
+        maxProgress: 100,
+        points: 250,
     },
     {
         id: 'turner-3',
@@ -226,7 +252,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Used Reverse 200 times.',
         tier: 'gold',
         icon: RotateCcw,
-        maxProgress: 200
+        maxProgress: 200,
+        points: 500,
     },
 
     // --- PRESTIGIOUS ---
@@ -236,7 +263,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Won a game without using any special card.',
         tier: 'prestigious',
         icon: Shield,
-        maxProgress: 1
+        maxProgress: 1,
+        points: 1000,
     },
     {
         id: 'brutalist',
@@ -244,7 +272,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Used 10 +4s in one game.',
         tier: 'prestigious',
         icon: Hammer,
-        maxProgress: 1
+        maxProgress: 1,
+        points: 1000,
     },
     {
         id: 'full-stop',
@@ -252,7 +281,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Used 3 skips in a row in one game.',
         tier: 'prestigious',
         icon: Octagon,
-        maxProgress: 1
+        maxProgress: 1,
+        points: 1000,
     },
     {
         id: 'unlucky',
@@ -260,7 +290,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Called UNO 5 times in one game but still lost.',
         tier: 'prestigious',
         icon: Frown,
-        maxProgress: 1
+        maxProgress: 1,
+        points: 1000,
     },
     {
         id: 'streak-3',
@@ -268,7 +299,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         description: 'Won 10 games in a row.',
         tier: 'prestigious',
         icon: Flame,
-        maxProgress: 10
+        maxProgress: 10,
+        points: 1000,
     }
 ];
 

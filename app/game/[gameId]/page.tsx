@@ -43,6 +43,7 @@ function Game() {
     selectColor,
     callUno,
     leaveGame,
+    unlockedAchievement,
   } = useMultiplayerUnoGame(gameId);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -552,12 +553,38 @@ function Game() {
       )}
       {/* Game Message Popup */}
       {(game.gameMessage || localMessage) && !isAwaitingColorChoice && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-lg mt-32 md:mt-40 z-50 pointer-events-none">
-          <div className="bg-black/70 backdrop-blur-md text-white font-bold text-xl md:text-2xl px-6 py-4 md:px-8 md:py-6 rounded-2xl shadow-2xl animate-pulse text-center">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] max-w-lg mt-40 md:mt-38 z-50 pointer-events-none">
+          <div className="bg-black/50 backdrop-blur-md text-white font-bold text-xl md:text-2xl px-4 py-2 md:px-2 md:py-1 rounded-2xl shadow-2xl animate-pulse text-center">
             {localMessage || game.gameMessage}
           </div>
         </div>
       )}
+
+      {/* Achievement Unlocked Toast */}
+      {unlockedAchievement && (
+        <div className="absolute top-20 right-4 z-50 animate-[slide-in-right_0.5s_ease-out]">
+          <div className="bg-gray-900/95 border border-yellow-500/50 text-white p-4 rounded-xl shadow-2xl flex items-center gap-4 backdrop-blur-md max-w-sm">
+            <div className="p-3 bg-yellow-500/20 rounded-full text-yellow-400 shrink-0">
+              <unlockedAchievement.icon size={24} />
+            </div>
+            <div>
+              <h4 className="font-bold text-yellow-400 text-xs uppercase tracking-wider mb-0.5">
+                Achievement Unlocked!
+              </h4>
+              <p className="font-bold text-lg leading-tight">
+                {unlockedAchievement.title}
+              </p>
+              <p className="text-xs text-gray-300 mt-1">
+                {unlockedAchievement.description}
+              </p>
+              <div className="mt-2 text-xs font-bold text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded w-fit">
+                +{unlockedAchievement.points} PTS
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Settings Modal */}
       {isSettingsOpen && (
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-2 p-4">

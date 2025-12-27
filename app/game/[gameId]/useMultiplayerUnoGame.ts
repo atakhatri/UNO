@@ -9,9 +9,9 @@ import {
     drawCards,
     isCardPlayable,
 } from "../../game-logic";
-import { db, getUserId, getGameDocRef } from "../../lib/firebase";
-import { doc, onSnapshot, updateDoc } from "firebase/firestore";
-import { updateAchievement, resetStreaks } from "../../lib/achievements";
+import { db, getUserId, getGameDocRef, getUserDocRef } from "../../lib/firebase";
+import { doc, onSnapshot, updateDoc, increment } from "firebase/firestore";
+import { updateAchievement, resetStreaks, ACHIEVEMENTS_LIST, AchievementDef } from "../../lib/achievements";
 
 export function useMultiplayerUnoGame(gameId: string) {
     const [game, setGame] = useState<GameState | null>(null);
@@ -19,6 +19,8 @@ export function useMultiplayerUnoGame(gameId: string) {
     const [error, setError] = useState<string | null>(null);
     const [isAwaitingColorChoice, setIsAwaitingColorChoice] = useState(false);
     const [localUnoButtonPressed, setLocalUnoButtonPressed] = useState(false);
+    const [unlockedAchievement, setUnlockedAchievement] = useState<AchievementDef | null>(null);
+    const prevAchievementsRef = useRef<Record<string, number>>({});
 
     // Session stats for achievements (reset per game)
     const sessionStats = useRef({
@@ -124,6 +126,38 @@ export function useMultiplayerUnoGame(gameId: string) {
             }
         }
     }, [game?.currentPlayerIndex, game?.pendingUnoCallCheck, game?.players, gameId, userId]);
+
+    // --- NEW: Listen for Achievement Unlocks ---
+    useEffect(() => {
+        if (!userId) return;
+        const userDocRef = getUserDocRef(userId);
+        let isFirstRun = true;
+
+        const unsubscribe = onSnapshot(userDocRef, (doc) => {
+            if (doc.exists()) {
+                const data = doc.data();
+                const currentAchievements = data.achievements || {};
+
+                if (isFirstRun) {
+                    prevAchievementsRef.current = currentAchievements;
+                    isFirstRun = false;
+                    return;
+                }
+
+                for (const ach of ACHIEVEMENTS_LIST) {
+                    const prev = prevAchievementsRef.current[ach.id] || 0;
+                    const curr = currentAchievements[ach.id] || 0;
+
+                    if (prev < ach.maxProgress && curr >= ach.maxProgress) {
+                        setUnlockedAchievement(ach);
+                        setTimeout(() => setUnlockedAchievement(null), 5000); // Clear after 5s
+                    }
+                }
+                prevAchievementsRef.current = currentAchievements;
+            }
+        });
+        return () => unsubscribe();
+    }, [userId]);
 
     const handleReshuffle = (currentDiscardPile: Card[]): Card[] => {
         if (currentDiscardPile.length <= 1) return [];
@@ -390,6 +424,14 @@ export function useMultiplayerUnoGame(gameId: string) {
                 updates.gameMessage += `${currentPlayer.name} Wins!`;
                 updates.playerInUnoState = null;
                 updates.pendingUnoCallCheck = null;
+
+                // --- NEW: Update Player Stats on Win ---
+                const xpGained = 100 + (game.players.length * 25); // 100 base + 25 per player
+                const userRef = getUserDocRef(userId);
+                updateDoc(userRef, {
+                    wins: increment(1),
+                    xp: increment(xpGained)
+                });
 
                 // Achievements: Winning
                 updateAchievement(userId, 'conq-1', 1);
@@ -694,5 +736,6 @@ export function useMultiplayerUnoGame(gameId: string) {
         selectColor,
         callUno,
         leaveGame,
+        unlockedAchievement,
     };
 }
