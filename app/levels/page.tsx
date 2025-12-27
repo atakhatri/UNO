@@ -2,7 +2,13 @@
 
 import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
-import { FaArrowLeft, FaLock, FaStar, FaTrophy } from "react-icons/fa";
+import {
+  FaArrowLeft,
+  FaLock,
+  FaStar,
+  FaTrophy,
+  FaLocationArrow,
+} from "react-icons/fa";
 import {
   auth,
   onAuthStateChanged,
@@ -16,6 +22,11 @@ import {
   getCurrentLevel,
   MAX_LEVEL,
 } from "../lib/levels";
+import {
+  FaLocationPin,
+  FaLocationPinLock,
+  FaMapLocation,
+} from "react-icons/fa6";
 
 interface UserStats {
   xp?: number;
@@ -68,13 +79,7 @@ const LevelTile = ({
           className={`absolute bottom-2 left-2 p-1 ${
             isCurrentLevel ? "bg-blue-500/20" : "bg-yellow-500/20"
           } rounded-full`}
-        >
-          <FaStar
-            className={`${
-              isCurrentLevel ? "text-blue-400" : "text-yellow-400"
-            } w-3 h-3`}
-          />
-        </div>
+        ></div>
       )}
     </div>
   );
@@ -85,10 +90,12 @@ export default function LevelsPage() {
   const [user, setUser] = useState<User | null>(null);
   const [userStats, setUserStats] = useState<UserStats>({ xp: 0, wins: 0 });
   const [loading, setLoading] = useState(true);
+  const [showScrollButton, setShowScrollButton] = useState(false);
 
   // Infinite Scroll & Parallax State
   const [range, setRange] = useState<{ min: number; max: number } | null>(null);
   const scrollAdjustmentRef = useRef(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const ROW_HEIGHT = 160;
 
   useEffect(() => {
@@ -129,43 +136,63 @@ export default function LevelsPage() {
 
   // Handle Scroll for Parallax and Infinite Loading
   useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const currentLevel = getCurrentLevel(userStats.xp || 0);
+
     const handleScroll = () => {
       if (!range) return;
 
-      const { scrollTop, scrollHeight, clientHeight } =
-        document.documentElement;
+      const { scrollTop, scrollHeight, clientHeight } = container;
       const THRESHOLD = 200;
 
-      // Expand Top (Higher Levels) - Trigger when near top
-      if (scrollTop < THRESHOLD && range.max < MAX_LEVEL) {
+      // Expand Top (Lower Levels) - Trigger when near top
+      if (scrollTop < THRESHOLD && range.min > 1) {
+        const newMin = Math.max(1, range.min - 2);
+        if (newMin < range.min) {
+          const addedLevels = range.min - newMin;
+          scrollAdjustmentRef.current = addedLevels * ROW_HEIGHT;
+          setRange((prev) => (prev ? { ...prev, min: newMin } : null));
+        }
+      }
+
+      // Expand Bottom (Higher Levels) - Trigger when near bottom
+      if (
+        scrollTop + clientHeight > scrollHeight - THRESHOLD &&
+        range.max < MAX_LEVEL
+      ) {
         const newMax = Math.min(MAX_LEVEL, range.max + 2);
         if (newMax > range.max) {
-          const addedLevels = newMax - range.max;
-          scrollAdjustmentRef.current = addedLevels * ROW_HEIGHT;
           setRange((prev) => (prev ? { ...prev, max: newMax } : null));
         }
       }
 
-      // Expand Bottom (Lower Levels) - Trigger when near bottom
-      if (
-        scrollTop + clientHeight > scrollHeight - THRESHOLD &&
-        range.min > 1
-      ) {
-        const newMin = Math.max(1, range.min - 2);
-        if (newMin < range.min) {
-          setRange((prev) => (prev ? { ...prev, min: newMin } : null));
-        }
+      // Check visibility of current level
+      const sortedLevels = LEVEL_DEFINITIONS.filter(
+        (l) => l.level >= range.min && l.level <= range.max
+      ).sort((a, b) => a.level - b.level);
+
+      const currentIndex = sortedLevels.findIndex(
+        (l) => l.level === currentLevel
+      );
+      if (currentIndex !== -1) {
+        const levelY = currentIndex * ROW_HEIGHT + ROW_HEIGHT / 2;
+        const isVisible =
+          levelY >= scrollTop + 100 && levelY <= scrollTop + clientHeight - 100;
+        setShowScrollButton(!isVisible);
       }
     };
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [range, ROW_HEIGHT]);
+    container.addEventListener("scroll", handleScroll);
+    handleScroll(); // Initial check
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [range, ROW_HEIGHT, userStats.xp]);
 
   // Adjust scroll position to prevent jumping when adding items to the top
   useLayoutEffect(() => {
-    if (scrollAdjustmentRef.current !== 0) {
-      window.scrollBy(0, scrollAdjustmentRef.current);
+    if (scrollAdjustmentRef.current !== 0 && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop += scrollAdjustmentRef.current;
       scrollAdjustmentRef.current = 0;
     }
   });
@@ -192,7 +219,7 @@ export default function LevelsPage() {
 
   const visibleLevels = LEVEL_DEFINITIONS.filter(
     (l) => l.level >= min && l.level <= max
-  ).sort((a, b) => b.level - a.level); // Descending order
+  ).sort((a, b) => a.level - b.level); // Ascending order
 
   // Generate path points for SVG
   const points = visibleLevels.map((l, i) => {
@@ -206,6 +233,13 @@ export default function LevelsPage() {
     return i === 0 ? `M ${p.x}% ${p.y}` : `${acc} L ${p.x}% ${p.y}`;
   }, "");
 
+  const scrollToCurrentLevel = () => {
+    const el = document.getElementById(`level-${currentLevel}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center text-white">
@@ -215,7 +249,7 @@ export default function LevelsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white font-sans relative overflow-hidden">
+    <div className="h-screen bg-slate-900 text-white font-sans relative overflow-hidden flex flex-col">
       {/* Parallax Background */}
       <div
         className="fixed inset-0 z-0 pointer-events-none"
@@ -227,7 +261,7 @@ export default function LevelsPage() {
         }}
       />
 
-      <div className="relative z-10 p-4 md:p-8 max-w-7xl mx-auto">
+      <div className="relative z-20 p-4 md:p-8 pb-0 md:pb-0 max-w-7xl mx-auto w-full shrink-0">
         <button
           onClick={() => router.push("/profile")}
           className="flex items-center text-slate-300 hover:text-white transition-colors mb-6 group"
@@ -236,7 +270,7 @@ export default function LevelsPage() {
           Back to Profile
         </button>
 
-        <div className="bg-gray-800/50 border border-white/20 rounded-xl p-6 mb-8 backdrop-blur-sm">
+        <div className="bg-gray-800/50 border border-white/20 rounded-xl p-6 mb-0 backdrop-blur-sm">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="text-center md:text-left">
               <h1 className="text-3xl md:text-4xl font-bold text-white">
@@ -274,67 +308,51 @@ export default function LevelsPage() {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Map Container */}
-        <div
-          className="relative w-full max-w-md mx-auto mt-12"
-          style={{ height: visibleLevels.length * ROW_HEIGHT }}
-        >
-          {/* Connecting Line */}
-          <svg
-            className="absolute inset-0 w-full h-full pointer-events-none"
-            style={{ zIndex: 0 }}
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto overflow-x-hidden relative z-10 w-full [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-800/20 [&::-webkit-scrollbar-thumb]:bg-slate-600/50 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-blue-500/80"
+      >
+        <div className="p-4 md:p-8 pt-0 md:pt-0 max-w-7xl mx-auto">
+          <div
+            className="relative w-full max-w-md mx-auto mt-12"
+            style={{ height: visibleLevels.length * ROW_HEIGHT }}
           >
-            <path
-              d={pathD}
-              stroke="rgba(255, 255, 255, 0.5)"
-              strokeWidth="8"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeDasharray="20 20"
-            />
-            <path
-              d={pathD}
-              stroke="url(#gradient-path)"
-              strokeWidth="3"
-              fill="none"
-              strokeDasharray="20 20"
-              className="animate-pulse"
-            />
-            <defs>
-              <linearGradient
-                id="gradient-path"
-                x1="0%"
-                y1="0%"
-                x2="0%"
-                y2="100%"
+            {visibleLevels.map((def, i) => (
+              <div
+                key={def.level}
+                id={`level-${def.level}`}
+                className="absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-500"
+                style={{
+                  left: `${points[i].x}%`,
+                  top: `${points[i].y}px`,
+                  zIndex: 10,
+                }}
               >
-                <stop offset="0%" stopColor="#3b82f6" />
-                <stop offset="100%" stopColor="#eab308" />
-              </linearGradient>
-            </defs>
-          </svg>
-
-          {visibleLevels.map((def, i) => (
-            <div
-              key={def.level}
-              className="absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-500"
-              style={{
-                left: `${points[i].x}%`,
-                top: `${points[i].y}px`,
-                zIndex: 10,
-              }}
-            >
-              <LevelTile
-                levelDef={def}
-                userXp={userStats.xp || 0}
-                isCurrentLevel={def.level === currentLevel}
-              />
-            </div>
-          ))}
+                <LevelTile
+                  levelDef={def}
+                  userXp={userStats.xp || 0}
+                  isCurrentLevel={def.level === currentLevel}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
+
+      {/* Scroll to Current Level Button */}
+      <button
+        onClick={scrollToCurrentLevel}
+        className={`absolute bottom-8 right-8 z-50 bg-yellow-600 hover:bg-blue-500 text-white p-4 rounded-full shadow-lg transition-all duration-300 transform ${
+          showScrollButton
+            ? "translate-y-0 opacity-100"
+            : "translate-y-20 opacity-0 pointer-events-none"
+        }`}
+        aria-label="Scroll to current level"
+      >
+        <FaMapLocation className="w-6 h-6" />
+      </button>
     </div>
   );
 }

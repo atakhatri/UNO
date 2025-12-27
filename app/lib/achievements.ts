@@ -15,6 +15,7 @@ export interface AchievementDef {
     maxProgress: number; // e.g., 10 wins
     points: number;
     image?: string; // Optional custom PNG path
+    coins: number;
 }
 
 export const ACHIEVEMENTS_LIST: AchievementDef[] = [
@@ -27,6 +28,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Crown,
         maxProgress: 10,
         points: 50,
+        coins: 100,
+
     },
     {
         id: 'conq-2',
@@ -36,6 +39,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Crown,
         maxProgress: 50,
         points: 250,
+        coins: 500,
     },
     {
         id: 'conq-3',
@@ -45,6 +49,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Crown,
         maxProgress: 100,
         points: 500,
+        coins: 1000,
+
     },
 
     // --- ACTIONS ---
@@ -56,6 +62,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Zap,
         maxProgress: 1,
         points: 500,
+        coins: 1000,
+
     },
     {
         id: 'no-u',
@@ -65,6 +73,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: RotateCcw,
         maxProgress: 1,
         points: 250,
+        coins: 500,
+
     },
     {
         id: 'denial',
@@ -74,6 +84,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Ban,
         maxProgress: 5,
         points: 250,
+        coins: 500,
     },
 
     // --- SOCIAL / FUN ---
@@ -85,6 +96,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Users,
         maxProgress: 1,
         points: 50,
+        coins: 100,
     },
     {
         id: 'streak-1',
@@ -94,6 +106,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Flame,
         maxProgress: 3,
         points: 250,
+        coins: 500,
     },
     {
         id: 'streak-2',
@@ -103,6 +116,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Flame,
         maxProgress: 5,
         points: 500,
+        coins: 1000,
     },
 
     // --- NEW ADDITIONS ---
@@ -114,6 +128,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: AlertCircle,
         maxProgress: 25,
         points: 250,
+        coins: 500,
+
     },
     // +4 Bomber
     {
@@ -124,6 +140,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Bomb,
         maxProgress: 50,
         points: 50,
+        coins: 100,
     },
     {
         id: 'bomber-2',
@@ -133,6 +150,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Bomb,
         maxProgress: 100,
         points: 250,
+        coins: 500,
     },
     {
         id: 'bomber-3',
@@ -142,6 +160,8 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Bomb,
         maxProgress: 200,
         points: 500,
+        coins: 1000,
+
     },
     // +2 Assaulter
     {
@@ -152,6 +172,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Swords,
         maxProgress: 50,
         points: 50,
+        coins: 100,
     },
     {
         id: 'assaulter-2',
@@ -161,6 +182,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Swords,
         maxProgress: 100,
         points: 250,
+        coins: 500,
     },
     {
         id: 'assaulter-3',
@@ -170,6 +192,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Swords,
         maxProgress: 200,
         points: 500,
+        coins: 1000,
     },
     // The Lizard (Wilds)
     {
@@ -180,6 +203,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Palette,
         maxProgress: 50,
         points: 50,
+        coins: 100,
     },
     {
         id: 'lizard-2',
@@ -189,6 +213,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Palette,
         maxProgress: 100,
         points: 250,
+        coins: 500,
     },
     {
         id: 'lizard-3',
@@ -198,6 +223,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Palette,
         maxProgress: 200,
         points: 500,
+        coins: 1000,
     },
     // The Jammer (Skips)
     {
@@ -208,6 +234,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Ban,
         maxProgress: 50,
         points: 50,
+        coins: 100,
     },
     {
         id: 'jammer-2',
@@ -217,6 +244,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Ban,
         maxProgress: 100,
         points: 250,
+        coins: 500,
     },
     {
         id: 'jammer-3',
@@ -226,6 +254,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Ban,
         maxProgress: 200,
         points: 500,
+        coins: 1000,
     },
     // Quick Turner (Reverse)
     {
@@ -236,6 +265,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: RotateCcw,
         maxProgress: 50,
         points: 50,
+        coins: 100,
     },
     {
         id: 'turner-2',
@@ -245,6 +275,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: RotateCcw,
         maxProgress: 100,
         points: 250,
+        coins: 500,
     },
     {
         id: 'turner-3',
@@ -254,6 +285,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: RotateCcw,
         maxProgress: 200,
         points: 500,
+        coins: 1000,
     },
 
     // --- PRESTIGIOUS ---
@@ -265,6 +297,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Shield,
         maxProgress: 1,
         points: 1000,
+        coins: 2000,
     },
     {
         id: 'brutalist',
@@ -274,6 +307,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Hammer,
         maxProgress: 1,
         points: 1000,
+        coins: 2000,
     },
     {
         id: 'full-stop',
@@ -283,6 +317,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Octagon,
         maxProgress: 1,
         points: 1000,
+        coins: 2000,
     },
     {
         id: 'unlucky',
@@ -292,6 +327,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Frown,
         maxProgress: 1,
         points: 1000,
+        coins: 2000,
     },
     {
         id: 'streak-3',
@@ -301,6 +337,7 @@ export const ACHIEVEMENTS_LIST: AchievementDef[] = [
         icon: Flame,
         maxProgress: 10,
         points: 1000,
+        coins: 2000,
     }
 ];
 
