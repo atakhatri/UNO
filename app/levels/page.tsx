@@ -15,12 +15,14 @@ import {
   getUserDocRef,
   onSnapshot,
   User,
+  collectLevelCoins,
 } from "../lib/firebase";
 import {
   LEVEL_DEFINITIONS,
   LevelDef,
   getCurrentLevel,
   MAX_LEVEL,
+  getLevelUpCoins,
 } from "../lib/levels";
 import {
   FaLocationPin,
@@ -38,24 +40,30 @@ const LevelTile = ({
   levelDef,
   userXp,
   isCurrentLevel,
+  coinReward,
+  isClaimed,
+  onCollect,
 }: {
   levelDef: LevelDef;
   userXp: number;
   isCurrentLevel: boolean;
+  coinReward: number;
+  isClaimed: boolean;
+  onCollect?: () => void;
 }) => {
   const isUnlocked = userXp >= levelDef.requiredXp;
 
   const tileStyle = isCurrentLevel
     ? "bg-blue-500/10 border-blue-500/30 scale-105 shadow-lg shadow-blue-500/20"
     : isUnlocked
-    ? "bg-yellow-500/10 border-yellow-500/30 opacity-80"
-    : "bg-gray-800/50 border-gray-700";
+      ? "bg-yellow-500/10 border-yellow-500/30 opacity-80"
+      : "bg-gray-800/50 border-gray-700";
 
   const textStyle = isCurrentLevel
     ? "text-blue-300"
     : isUnlocked
-    ? "text-yellow-300"
-    : "text-gray-500";
+      ? "text-yellow-300"
+      : "text-gray-500";
 
   return (
     <div
@@ -81,6 +89,26 @@ const LevelTile = ({
           } rounded-full`}
         ></div>
       )}
+      {/* Coins Reward Section */}
+      {isUnlocked && (
+        <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 w-max">
+          {!isClaimed ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onCollect?.();
+              }}
+              className="px-3 py-1 bg-linear-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white text-xs font-bold rounded-full shadow-lg transition-all hover:scale-110 active:scale-95"
+            >
+              +{coinReward} 💰
+            </button>
+          ) : (
+            <div className="px-3 py-1 bg-linear-to-r from-blue-500/50 to-purple-600/50 text-white text-xs font-bold rounded-full border border-blue-400/30">
+              ✓ Claimed
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -89,6 +117,7 @@ export default function LevelsPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [userStats, setUserStats] = useState<UserStats>({ xp: 0, wins: 0 });
+  const [claimedLevelCoins, setClaimedLevelCoins] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
 
@@ -111,6 +140,7 @@ export default function LevelsPage() {
               wins: data.wins || 0,
               displayName: data.displayName || "Player",
             });
+            setClaimedLevelCoins(data.claimedLevelCoins || []);
           }
           setLoading(false);
         });
@@ -170,11 +200,11 @@ export default function LevelsPage() {
 
       // Check visibility of current level
       const sortedLevels = LEVEL_DEFINITIONS.filter(
-        (l) => l.level >= range.min && l.level <= range.max
+        (l) => l.level >= range.min && l.level <= range.max,
       ).sort((a, b) => a.level - b.level);
 
       const currentIndex = sortedLevels.findIndex(
-        (l) => l.level === currentLevel
+        (l) => l.level === currentLevel,
       );
       if (currentIndex !== -1) {
         const levelY = currentIndex * ROW_HEIGHT + ROW_HEIGHT / 2;
@@ -209,7 +239,7 @@ export default function LevelsPage() {
       ? Math.round(
           (((userStats.xp || 0) - xpForCurrentLevel) /
             (xpForNextLevel - xpForCurrentLevel)) *
-            100
+            100,
         )
       : 100;
 
@@ -218,7 +248,7 @@ export default function LevelsPage() {
   const max = range?.max ?? Math.min(MAX_LEVEL, currentLevel + 2);
 
   const visibleLevels = LEVEL_DEFINITIONS.filter(
-    (l) => l.level >= min && l.level <= max
+    (l) => l.level >= min && l.level <= max,
   ).sort((a, b) => a.level - b.level); // Ascending order
 
   // Generate path points for SVG
@@ -237,6 +267,16 @@ export default function LevelsPage() {
     const el = document.getElementById(`level-${currentLevel}`);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
+
+  const handleCollectLevelCoins = async (level: number) => {
+    if (!user) return;
+    const coins = getLevelUpCoins(level);
+    const success = await collectLevelCoins(user.uid, level, coins);
+    if (success) {
+      // The onSnapshot will update claimedLevelCoins automatically
+      console.log("Level coins collected!");
     }
   };
 
@@ -334,6 +374,9 @@ export default function LevelsPage() {
                   levelDef={def}
                   userXp={userStats.xp || 0}
                   isCurrentLevel={def.level === currentLevel}
+                  coinReward={getLevelUpCoins(def.level)}
+                  isClaimed={claimedLevelCoins.includes(def.level)}
+                  onCollect={() => handleCollectLevelCoins(def.level)}
                 />
               </div>
             ))}

@@ -30,7 +30,7 @@ function Game() {
   const params = useParams();
   const gameId = Array.isArray(params.gameId)
     ? params.gameId[0]
-    : params.gameId ?? "";
+    : (params.gameId ?? "");
 
   const {
     game,
@@ -44,6 +44,7 @@ function Game() {
     callUno,
     leaveGame,
     unlockedAchievement,
+    winCoins,
   } = useMultiplayerUnoGame(gameId);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -91,7 +92,7 @@ function Game() {
                 : null;
             });
             const friends = (await Promise.all(friendPromises)).filter(
-              Boolean
+              Boolean,
             ) as UserProfile[];
             setFriendsDetails(friends);
           }
@@ -260,8 +261,8 @@ function Game() {
           {game.status === "waiting"
             ? "Waiting..."
             : game.status === "finished"
-            ? "Game Over!"
-            : `${currentTurnPlayerName}'s Turn`}
+              ? "Game Over!"
+              : `${currentTurnPlayerName}'s Turn`}
         </div>
         <div className="bg-black/30 p-2 rounded-lg text-xs">
           <span className="font-bold">ID:</span>
@@ -413,8 +414,8 @@ function Game() {
                 showCardSuggestions && !isClickable
                   ? "opacity-50 cursor-not-allowed"
                   : !isClickable
-                  ? "cursor-not-allowed"
-                  : "";
+                    ? "cursor-not-allowed"
+                    : "";
 
               return (
                 <CardComponent
@@ -472,7 +473,7 @@ function Game() {
                   )}
                   {friendsDetails.map((friend) => {
                     const isAlreadyInGame = game.players.some(
-                      (p) => p.uid === friend.uid
+                      (p) => p.uid === friend.uid,
                     );
                     const isInviteSent = sentInvites.includes(friend.id);
                     return (
@@ -489,8 +490,8 @@ function Game() {
                           {isAlreadyInGame
                             ? "In Game"
                             : isInviteSent
-                            ? "Sent"
-                            : "Invite"}
+                              ? "Sent"
+                              : "Invite"}
                         </button>
                       </div>
                     );
@@ -542,6 +543,13 @@ function Game() {
                     "Someone"
                   } Won!`}
             </h2>
+            {game.winnerId === userId && winCoins > 0 && (
+              <div className="mb-6 p-4 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
+                <p className="text-yellow-400 font-bold text-lg">
+                  +{winCoins} Coins Earned!
+                </p>
+              </div>
+            )}
             <button
               onClick={handleLeaveGame}
               className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-xl font-semibold"
@@ -628,7 +636,7 @@ function Game() {
                 <div className="grid grid-cols-3 gap-4">
                   {(
                     Object.keys(
-                      cardBackDesigns
+                      cardBackDesigns,
                     ) as (keyof typeof cardBackDesigns)[]
                   ).map((design) => (
                     <button

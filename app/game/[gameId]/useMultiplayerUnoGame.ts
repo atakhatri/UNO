@@ -9,7 +9,7 @@ import {
     drawCards,
     isCardPlayable,
 } from "../../game-logic";
-import { db, getUserId, getGameDocRef, getUserDocRef } from "../../lib/firebase";
+import { db, getUserId, getGameDocRef, getUserDocRef, awardCoinsForWin } from "../../lib/firebase";
 import { doc, onSnapshot, updateDoc, increment } from "firebase/firestore";
 import { updateAchievement, resetStreaks, ACHIEVEMENTS_LIST, AchievementDef } from "../../lib/achievements";
 
@@ -20,6 +20,7 @@ export function useMultiplayerUnoGame(gameId: string) {
     const [isAwaitingColorChoice, setIsAwaitingColorChoice] = useState(false);
     const [localUnoButtonPressed, setLocalUnoButtonPressed] = useState(false);
     const [unlockedAchievement, setUnlockedAchievement] = useState<AchievementDef | null>(null);
+    const [winCoins, setWinCoins] = useState(0);
     const prevAchievementsRef = useRef<Record<string, number>>({});
 
     // Session stats for achievements (reset per game)
@@ -425,6 +426,11 @@ export function useMultiplayerUnoGame(gameId: string) {
                 updates.playerInUnoState = null;
                 updates.pendingUnoCallCheck = null;
 
+                // --- Award Coins for Winning ---
+                const coinsReward = 150 * game.players.length;
+                setWinCoins(coinsReward);
+                awardCoinsForWin(userId, coinsReward);
+
                 // --- NEW: Update Player Stats on Win ---
                 const xpGained = 100 + (game.players.length * 25); // 100 base + 25 per player
                 const userRef = getUserDocRef(userId);
@@ -737,5 +743,6 @@ export function useMultiplayerUnoGame(gameId: string) {
         callUno,
         leaveGame,
         unlockedAchievement,
+        winCoins,
     };
 }

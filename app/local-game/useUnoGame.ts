@@ -10,6 +10,7 @@ import {
 } from "../game-logic";
 import type { Player, Color } from "./game-types";
 import type { AnimatedCard } from "../game/game-types";
+import { awardCoinsForWin } from "../lib/firebase";
 
 const ANIMATION_DURATION = 500;
 
@@ -20,6 +21,7 @@ export function useUnoGame(numPlayers: number) {
     const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
     const [playDirection, setPlayDirection] = useState<1 | -1>(1);
     const [winner, setWinner] = useState<Player | null>(null);
+    const [winCoins, setWinCoins] = useState(0);
 
     const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
     const [playedWildCard, setPlayedWildCard] = useState<Card | null>(null);
@@ -246,6 +248,8 @@ export function useUnoGame(numPlayers: number) {
 
                 if (newHand.length === 0 && !drewPenaltyCards) {
                     setWinner(currentPlayer);
+                    const coinsReward = 150 * numPlayers;
+                    setWinCoins(coinsReward);
                     setGameMessage(`${currentPlayer.name} Wins! 🎉`);
                     return;
                 }
@@ -466,6 +470,7 @@ export function useUnoGame(numPlayers: number) {
         setCurrentPlayerIndex(0);
         setPlayDirection(1);
         setWinner(null);
+        setWinCoins(0);
         setPlayerCalledUno(false);
         setIsColorPickerOpen(false);
         setPlayedWildCard(null);
@@ -516,6 +521,7 @@ export function useUnoGame(numPlayers: number) {
         topOfDiscard,
         currentPlayerIndex,
         winner,
+        winCoins,
         isColorPickerOpen,
         playerCalledUno,
         gameMessage,

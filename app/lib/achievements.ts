@@ -3,7 +3,7 @@ import {
     AlertCircle, Bomb, Swords, Palette, Slash, Shield, Hammer, Octagon, Frown,
     BanIcon
 } from 'lucide-react';
-import { increment, updateDoc } from 'firebase/firestore';
+import { increment, updateDoc, getDoc } from 'firebase/firestore';
 import { getUserDocRef } from './firebase';
 
 export interface AchievementDef {
@@ -352,16 +352,64 @@ export const updateAchievement = async (userId: string, achievementId: string, a
 
     try {
         const userRef = getUserDocRef(userId);
-        // We use dot notation to update a specific key in the map "achievements.conq-1"
-        // increment(amount) ensures atomic updates (e.g. 5 + 1 = 6) safely
+        // Just update the achievement progress, no automatic rewards
         await updateDoc(userRef, {
             [`achievements.${achievementId}`]: increment(amount)
         });
         console.log(`Achievement ${achievementId} updated for ${userId}`);
     } catch (error) {
         console.error("Error updating achievement:", error);
-        // Fallback: If document doesn't exist or map field is missing, setDoc with merge might be safer, 
-        // but typically the user doc exists after login.
+    }
+};
+
+// --- NEW: Collect Achievement Rewards ---
+export const collectAchievementReward = async (userId: string, achievementId: string) => {
+    if (!userId) return false;
+
+    try {
+        const userRef = getUserDocRef(userId);
+        const userDoc = await getDoc(userRef);
+
+        if (!userDoc.exists()) {
+            console.error("User document not found");
+            return false;
+        }
+
+        const userData = userDoc.data();
+        const currentProgress = userData?.achievements?.[achievementId] || 0;
+        const claimedAchievements = userData?.claimedAchievements || [];
+
+        // Find the achievement definition
+        const achievementDef = ACHIEVEMENTS_LIST.find(a => a.id === achievementId);
+        if (!achievementDef) {
+            console.error(`Achievement ${achievementId} not found`);
+            return false;
+        }
+
+        // Check if achievement is completed
+        if (currentProgress < achievementDef.maxProgress) {
+            console.error(`Achievement ${achievementId} not completed yet`);
+            return false;
+        }
+
+        // Check if already claimed
+        if (claimedAchievements.includes(achievementId)) {
+            console.error(`Achievement ${achievementId} already claimed`);
+            return false;
+        }
+
+        // Award coins and points, mark as claimed
+        await updateDoc(userRef, {
+            coins: increment(achievementDef.coins),
+            points: increment(achievementDef.points),
+            claimedAchievements: [...claimedAchievements, achievementId]
+        });
+
+        console.log(`Collected ${achievementDef.coins} coins and ${achievementDef.points} points from ${achievementId}`);
+        return true;
+    } catch (error) {
+        console.error("Error collecting achievement reward:", error);
+        return false;
     }
 };
 

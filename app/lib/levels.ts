@@ -28,3 +28,11 @@ export const getCurrentLevel = (xp: number): number => {
     const currentLevel = LEVEL_DEFINITIONS.slice().reverse().find(def => xp >= def.requiredXp);
     return currentLevel ? currentLevel.level : 1;
 };
+
+// --- Get Coins Reward for Level Up ---
+// Formula: 100 coins at level 1, scaling up to 2500 coins at level 100
+export const getLevelUpCoins = (level: number): number => {
+    if (level < 1 || level > MAX_LEVEL) return 0;
+    // Linear scale: 100 + (level - 1) * 24 = 100 at L1, ~2476 at L100
+    return Math.min(2500, 100 + (level - 1) * 24);
+};

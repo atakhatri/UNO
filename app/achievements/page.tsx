@@ -15,6 +15,7 @@ import {
   ACHIEVEMENTS_LIST,
   AchievementDef,
   getProgress,
+  collectAchievementReward,
 } from "../lib/achievements";
 
 // --- SVG & CARD COMPONENTS (Internal to this page for styling) ---
@@ -78,10 +79,16 @@ const AchievementCard = ({
   def,
   currentProgress,
   unlocked,
+  claimed,
+  onCollect,
+  userId,
 }: {
   def: AchievementDef;
   currentProgress: number;
   unlocked: boolean;
+  claimed: boolean;
+  onCollect?: () => void;
+  userId?: string;
 }) => {
   const {
     title,
@@ -91,6 +98,7 @@ const AchievementCard = ({
     maxProgress,
     image,
     points,
+    coins,
   } = def;
 
   // Config
@@ -250,15 +258,15 @@ const AchievementCard = ({
               tier === "silver"
                 ? "#2C3E50"
                 : tier === "prestigious"
-                ? "#330000"
-                : "#4A3015"
+                  ? "#330000"
+                  : "#4A3015"
             }
             fill={
               tier === "gold"
                 ? "#FFD700"
                 : tier === "prestigious"
-                ? "#FF0000"
-                : "none"
+                  ? "#FF0000"
+                  : "none"
             }
             className={
               tier === "gold" || tier === "prestigious" ? "animate-pulse" : ""
@@ -288,6 +296,29 @@ const AchievementCard = ({
           </div>
         </div>
       )}
+
+      {/* Collect Button - Shows when unlocked but not claimed */}
+      {unlocked && !claimed && (
+        <div className="absolute bottom-0 left-0 right-0 p-2">
+          <button
+            onClick={onCollect}
+            className="w-full px-4 py-2 bg-linear-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold rounded-lg shadow-lg transform transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 text-sm"
+          >
+            <span>🎁</span>
+            <span>Collect {coins} Coins</span>
+          </button>
+        </div>
+      )}
+
+      {/* Claimed Badge */}
+      {unlocked && claimed && (
+        <div className="absolute bottom-0 left-0 right-0 p-2">
+          <div className="w-full px-4 py-2 bg-linear-to-r from-blue-500/50 to-purple-600/50 text-white font-bold rounded-lg flex items-center justify-center gap-2 text-sm border border-blue-400/30">
+            <span>✓</span>
+            <span>Claimed</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -298,6 +329,7 @@ export default function AchievementsPage() {
   const [userAchievements, setUserAchievements] = useState<
     Record<string, number>
   >({});
+  const [claimedAchievements, setClaimedAchievements] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "unlocked" | "locked">("all");
   const [tierFilter, setTierFilter] = useState<
@@ -331,6 +363,7 @@ export default function AchievementsPage() {
             const data = docSnap.data();
             // Expecting data.achievements = { "conq-1": 5, "wild-1": 0 }
             setUserAchievements(data.achievements || {});
+            setClaimedAchievements(data.claimedAchievements || []);
           }
           setLoading(false);
         });
@@ -348,8 +381,19 @@ export default function AchievementsPage() {
   const processedList = ACHIEVEMENTS_LIST.map((ach) => {
     const current = userAchievements[ach.id] || 0;
     const unlocked = current >= ach.maxProgress;
-    return { ...ach, current, unlocked };
+    const claimed = claimedAchievements.includes(ach.id);
+    return { ...ach, current, unlocked, claimed };
   });
+
+  // Collect Reward Handler
+  const handleCollectReward = async (achievementId: string) => {
+    if (!user) return;
+    const success = await collectAchievementReward(user.uid, achievementId);
+    if (success) {
+      // The onSnapshot will update the UI automatically
+      console.log("Reward collected successfully!");
+    }
+  };
 
   const filteredList = processedList.filter((ach) => {
     const matchesStatus =
@@ -372,7 +416,7 @@ export default function AchievementsPage() {
   const percentage = Math.round((unlockedCount / totalCount) * 100);
   const earnedPoints = processedList.reduce(
     (acc, curr) => acc + (curr.unlocked ? curr.points : 0),
-    0
+    0,
   );
   const totalPoints = processedList.reduce((acc, curr) => acc + curr.points, 0);
 
@@ -521,6 +565,9 @@ export default function AchievementsPage() {
             def={ach}
             currentProgress={ach.current}
             unlocked={ach.unlocked}
+            claimed={ach.claimed}
+            onCollect={() => handleCollectReward(ach.id)}
+            userId={user?.uid}
           />
         ))}
 

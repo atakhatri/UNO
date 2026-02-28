@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { FaUser, FaTrophy, FaIdCard, FaCog } from "react-icons/fa";
+import { Coins } from "lucide-react";
 import type { User } from "firebase/auth";
 
 interface UserProfile {
@@ -13,6 +14,8 @@ interface UserProfile {
   friends: string[];
   pendingRequests: string[];
   sentRequests: string[];
+  coins?: number;
+  points?: number;
 }
 
 interface HeaderProps {
@@ -46,6 +49,11 @@ export const Header = ({
 
   return (
     <div className="flex justify-between items-center w-full mb-4 sm:mb-6">
+      <div className="flex items-center gap-2 bg-gray-900/80 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border border-yellow-500/50 text-yellow-400 font-bold shadow-lg backdrop-blur-md z-10">
+        <Coins className="text-yellow-400" />
+        <span>{userProfile?.coins?.toLocaleString() ?? 0}</span>
+      </div>
+
       <h1 className="text-5xl sm:text-5xl md:text-6xl font-bold text-white tracking-[0.5rem] sm:tracking-[1rem] -mr-2 sm:-mr-4">
         <span className="heading u">U</span>
         <span className="heading n">N</span>

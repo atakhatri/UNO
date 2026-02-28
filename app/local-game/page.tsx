@@ -7,6 +7,12 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { cardBackDesigns, Color } from "../game/game-types";
 import type { Card } from "../game-logic";
 import { useUnoGame } from "./useUnoGame";
+import {
+  auth,
+  onAuthStateChanged,
+  User,
+  awardCoinsForWin,
+} from "../lib/firebase";
 
 function Game() {
   const router = useRouter();
@@ -19,6 +25,7 @@ function Game() {
     topOfDiscard,
     currentPlayerIndex,
     winner,
+    winCoins,
     isColorPickerOpen,
     gameMessage,
     animatedCard,
@@ -31,10 +38,31 @@ function Game() {
     startGame,
   } = useUnoGame(numPlayers);
 
+  const [user, setUser] = useState<User | null>(null);
+  const [coinsAwarded, setCoinsAwarded] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [cardBack, setCardBack] =
     useState<keyof typeof cardBackDesigns>("default");
   const [showCardSuggestions, setShowCardSuggestions] = useState(true);
+
+  // Auth & Coin Awards
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (winner && winner.id === 0 && user && !coinsAwarded && winCoins > 0) {
+      awardCoinsForWin(user.uid, winCoins);
+      setCoinsAwarded(true);
+    }
+  }, [winner, user, coinsAwarded, winCoins]);
+
+  useEffect(() => {
+    setCoinsAwarded(false);
+  }, [startGame]);
 
   const player = players[0];
   const opponents = players.slice(1);
@@ -49,7 +77,7 @@ function Game() {
   };
 
   const hasPlayableCard = player.hand.some((card) =>
-    isCardPlayable(card, topOfDiscard)
+    isCardPlayable(card, topOfDiscard),
   );
 
   return (
@@ -84,8 +112,8 @@ function Game() {
             {winner
               ? "Game Over!"
               : isPlayerTurn
-              ? "Your Turn"
-              : `Player ${currentPlayerIndex + 1}'s Turn`}
+                ? "Your Turn"
+                : `Player ${currentPlayerIndex + 1}'s Turn`}
           </div>
         </div>
       </div>
@@ -231,8 +259,8 @@ function Game() {
                   showCardSuggestions && !isClickable
                     ? "opacity-50 cursor-not-allowed"
                     : !isClickable
-                    ? "cursor-not-allowed"
-                    : "";
+                      ? "cursor-not-allowed"
+                      : "";
 
                 return (
                   <CardComponent
@@ -245,7 +273,7 @@ function Game() {
                     highlight={shouldHighlight}
                   />
                 );
-              })()
+              })(),
             )}
           </div>
         </div>
@@ -260,6 +288,13 @@ function Game() {
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
               {winner.id === 0 ? "You Won! 🎉" : `${winner.name} Won! 😞`}
             </h2>
+            {winner.id === 0 && winCoins > 0 && (
+              <div className="mb-6 p-4 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
+                <p className="text-yellow-400 font-bold text-lg">
+                  +{winCoins} Coins {user ? "Earned!" : "(Login to save)"}
+                </p>
+              </div>
+            )}
             <div className="flex gap-4 justify-center">
               <button
                 onClick={startGame}
@@ -330,7 +365,7 @@ function Game() {
                 <div className="grid grid-cols-3 gap-4">
                   {(
                     Object.keys(
-                      cardBackDesigns
+                      cardBackDesigns,
                     ) as (keyof typeof cardBackDesigns)[]
                   ).map((design) => (
                     <button

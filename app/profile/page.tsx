@@ -41,6 +41,7 @@ import {
 } from "../lib/firebase";
 import { ACHIEVEMENTS_LIST } from "../lib/achievements";
 import { getCurrentLevel } from "../lib/levels";
+import { Coins } from "lucide-react";
 
 interface UserProfile {
   id: string;
@@ -53,6 +54,8 @@ interface UserProfile {
   achievements?: Record<string, number>;
   xp?: number;
   wins?: number;
+  coins?: number;
+  points?: number;
 }
 
 export default function ProfilePage() {
@@ -103,17 +106,8 @@ export default function ProfilePage() {
 
           setLevel(getCurrentLevel(data.xp || 0));
 
-          if (data.achievements) {
-            const points = ACHIEVEMENTS_LIST.reduce((acc, ach) => {
-              if ((data.achievements?.[ach.id] || 0) >= ach.maxProgress) {
-                return acc + ach.points;
-              }
-              return acc;
-            }, 0);
-            setAchievementPoints(points);
-          } else {
-            setAchievementPoints(0);
-          }
+          // Use stored points from user profile
+          setAchievementPoints(data.points || 0);
 
           if (data.friends && data.friends.length > 0) {
             const friendPromises = data.friends.map(async (friendId) => {
@@ -124,8 +118,8 @@ export default function ProfilePage() {
             });
             setFriendsDetails(
               (await Promise.all(friendPromises)).filter(
-                Boolean
-              ) as UserProfile[]
+                Boolean,
+              ) as UserProfile[],
             );
           } else {
             setFriendsDetails([]);
@@ -141,12 +135,12 @@ export default function ProfilePage() {
                       id: requesterDoc.id,
                     } as UserProfile)
                   : null;
-              }
+              },
             );
             setPendingRequestsDetails(
               (await Promise.all(requestPromises)).filter(
-                Boolean
-              ) as UserProfile[]
+                Boolean,
+              ) as UserProfile[],
             );
           } else {
             setPendingRequestsDetails([]);
@@ -176,7 +170,7 @@ export default function ProfilePage() {
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
-        password
+        password,
       );
       await updateProfile(userCredential.user, { displayName: playerName });
       await createUserDocument(userCredential.user, playerName);
@@ -225,31 +219,31 @@ export default function ProfilePage() {
   const handleSendRequest = async (targetUserId: string) => {
     if (!user) return;
     await sendFriendRequest(user.uid, targetUserId).catch((err) =>
-      setError(err.message)
+      setError(err.message),
     );
   };
   const handleAcceptRequest = async (requesterId: string) => {
     if (!user) return;
     await acceptFriendRequest(user.uid, requesterId).catch((err) =>
-      setError(err.message)
+      setError(err.message),
     );
   };
   const handleDeclineRequest = async (requesterId: string) => {
     if (!user) return;
     await declineFriendRequest(user.uid, requesterId, "decline").catch((err) =>
-      setError(err.message)
+      setError(err.message),
     );
   };
   const handleCancelRequest = async (targetUserId: string) => {
     if (!user) return;
     await declineFriendRequest(user.uid, targetUserId, "cancel").catch((err) =>
-      setError(err.message)
+      setError(err.message),
     );
   };
   const handleRemoveFriend = async (friendId: string) => {
     if (!user) return;
     await removeFriend(user.uid, friendId).catch((err) =>
-      setError(err.message)
+      setError(err.message),
     );
   };
 
@@ -334,6 +328,22 @@ export default function ProfilePage() {
                       {level}
                     </span>
                   </Link>
+                </div>
+
+                <div className="mb-4 p-4 bg-linear-to-r from-yellow-900/20 to-transparent border border-yellow-500/20 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-yellow-500/10 rounded-lg">
+                      <Coins className="text-yellow-400 text-xl" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-yellow-500/80 font-bold uppercase tracking-wider">
+                        Coins
+                      </p>
+                      <p className="text-2xl font-black text-white">
+                        {(userProfile?.coins || 0).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="mb-6 p-4 bg-linear-to-r from-yellow-900/20 to-transparent border border-yellow-500/20 rounded-xl">
@@ -594,8 +604,8 @@ export default function ProfilePage() {
                   {loading
                     ? "Loading..."
                     : authMode === "login"
-                    ? "Login"
-                    : "Create Account"}
+                      ? "Login"
+                      : "Create Account"}
                 </button>
                 <button
                   type="button"

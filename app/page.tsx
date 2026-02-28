@@ -32,6 +32,7 @@ interface UserProfile {
   friends: string[];
   pendingRequests: string[];
   sentRequests: string[];
+  coins?: number;
 }
 
 interface GameInvite {
@@ -59,6 +60,7 @@ export default function Home() {
   >([]);
 
   const [gameInvites, setGameInvites] = useState<GameInvite[]>([]);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -90,7 +92,7 @@ export default function Home() {
                 : null;
             });
             const friends = (await Promise.all(friendPromises)).filter(
-              Boolean
+              Boolean,
             ) as UserProfile[];
             setFriendsDetails(friends);
           } else {
@@ -107,10 +109,10 @@ export default function Home() {
                       id: requesterDoc.id,
                     } as UserProfile)
                   : null;
-              }
+              },
             );
             const requesters = (await Promise.all(requestPromises)).filter(
-              Boolean
+              Boolean,
             ) as UserProfile[];
             setPendingRequestsDetails(requesters);
           } else {
@@ -122,7 +124,7 @@ export default function Home() {
       const invitesColRef = getGameInvitesCollectionRef(user.uid);
       const unsubInvites = onSnapshot(invitesColRef, (snapshot) => {
         const invites = snapshot.docs.map(
-          (doc) => ({ ...doc.data(), id: doc.id } as GameInvite)
+          (doc) => ({ ...doc.data(), id: doc.id }) as GameInvite,
         );
         setGameInvites(invites);
       });
@@ -141,8 +143,7 @@ export default function Home() {
   const handleCreateGame = async () => {
     const currentDisplayName = user?.displayName;
     if (!user || !currentDisplayName) {
-      setError("Please log in to create a game.");
-      router.push("/profile");
+      setShowLoginPrompt(true);
       return;
     }
     setLoading(true);
@@ -176,8 +177,7 @@ export default function Home() {
 
     const currentDisplayName = user?.displayName;
     if (!user || !currentDisplayName) {
-      setError("Please log in to join a game.");
-      router.push("/profile");
+      setShowLoginPrompt(true);
       return;
     }
     if (!gameId || gameId.length !== 6) {
@@ -377,9 +377,8 @@ export default function Home() {
                   </h2>
                   <button
                     onClick={() => handleCreateGame()}
-                    disabled={loading || !user}
+                    disabled={loading}
                     className="w-full px-6 py-3 bg-green-600/80 text-white rounded-lg text-xl font-semibold transition-all hover:bg-green-500/80 hover:scale-105 active:scale-95 disabled:bg-gray-500 disabled:opacity-70 disabled:cursor-not-allowed"
-                    title={!user ? "Please log in first" : ""}
                   >
                     {loading ? "Creating..." : "Create Game"}
                   </button>
@@ -403,15 +402,8 @@ export default function Home() {
                   />
                   <button
                     onClick={() => handleJoinGame()}
-                    disabled={loading || !user || gameIdToJoin.length !== 6}
+                    disabled={loading}
                     className="w-full px-6 py-3 bg-blue-600/80 text-white rounded-lg text-xl font-semibold transition-all hover:bg-blue-500/80 hover:scale-105 active:scale-95 disabled:bg-gray-500 disabled:opacity-70 disabled:cursor-not-allowed"
-                    title={
-                      !user
-                        ? "Please log in first"
-                        : gameIdToJoin.length !== 6
-                        ? "Enter a 6-digit Game ID"
-                        : ""
-                    }
                   >
                     {loading ? "Joining..." : "Join Game"}
                   </button>
@@ -491,6 +483,49 @@ export default function Home() {
                       cards and lose their turn.
                     </li>
                   </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Login Prompt Modal */}
+        {showLoginPrompt && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-800 border border-white/20 rounded-xl p-6 sm:p-8 text-white shadow-2xl w-full max-w-md animate-fadeIn">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl sm:text-2xl font-bold text-white">
+                  Login Required
+                </h2>
+                <button
+                  onClick={() => setShowLoginPrompt(false)}
+                  className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                  aria-label="Close prompt"
+                >
+                  <FaTimes size="1.25rem" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <p className="text-white/90 text-center">
+                  You need to login or register first to play online multiplayer
+                  games.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={() => {
+                      setShowLoginPrompt(false);
+                      router.push("/profile");
+                    }}
+                    className="flex-1 px-6 py-3 bg-blue-600/80 text-white rounded-lg text-lg font-semibold transition-all hover:bg-blue-500/80 hover:scale-105 active:scale-95"
+                  >
+                    Login / Register
+                  </button>
+                  <button
+                    onClick={() => setShowLoginPrompt(false)}
+                    className="flex-1 px-6 py-3 bg-gray-600/80 text-white rounded-lg text-lg font-semibold transition-all hover:bg-gray-500/80 hover:scale-105 active:scale-95"
+                  >
+                    Cancel
+                  </button>
                 </div>
               </div>
             </div>

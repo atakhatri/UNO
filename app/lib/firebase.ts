@@ -26,6 +26,7 @@ import {
     arrayRemove,
     writeBatch,
     deleteDoc,
+    increment,
 } from "firebase/firestore";
 
 import { getAnalytics, isSupported } from "firebase/analytics";
@@ -144,6 +145,11 @@ export const createUserDocument = async (user: User, displayName: string) => {
             friends: [],
             pendingRequests: [],
             sentRequests: [],
+            coins: 0,
+            points: 0,
+            achievements: {},
+            claimedAchievements: [],
+            claimedLevelCoins: [],
         };
         await setDoc(userDocRef, newUserDoc);
     } else {
@@ -303,6 +309,56 @@ export const deleteGameInvite = async (userId: string, gameId: string) => {
         gameId
     );
     await deleteDoc(inviteDocRef);
+};
+
+// --- Award Coins for Winning ---
+export const awardCoinsForWin = async (userId: string, coins: number) => {
+    if (!userId || coins <= 0) return;
+    try {
+        const userRef = getUserDocRef(userId);
+        await updateDoc(userRef, {
+            coins: increment(coins)
+        });
+        console.log(`Awarded ${coins} coins to user ${userId}`);
+    } catch (error) {
+        console.error("Error awarding coins:", error);
+    }
+};
+
+// --- Collect Level Up Coins ---
+export const collectLevelCoins = async (userId: string, level: number, coins: number) => {
+    if (!userId || level < 1 || coins <= 0) return false;
+
+    try {
+        const userRef = getUserDocRef(userId);
+        const userDoc = await getDoc(userRef);
+
+        if (!userDoc.exists()) {
+            console.error("User document not found");
+            return false;
+        }
+
+        const userData = userDoc.data();
+        const claimedLevels = userData?.claimedLevelCoins || [];
+
+        // Check if already claimed
+        if (claimedLevels.includes(level)) {
+            console.error(`Level ${level} coins already claimed`);
+            return false;
+        }
+
+        // Award coins and mark as claimed
+        await updateDoc(userRef, {
+            coins: increment(coins),
+            claimedLevelCoins: [...claimedLevels, level]
+        });
+
+        console.log(`Collected ${coins} coins from level ${level}`);
+        return true;
+    } catch (error) {
+        console.error("Error collecting level coins:", error);
+        return false;
+    }
 };
 
 export {
