@@ -176,7 +176,7 @@ export function useUnoGame(numPlayers: number) {
                     endTurn();
             }
         },
-        [currentPlayerIndex, drawCardFromDeck, endTurn, playDirection, players.length]
+        [currentPlayerIndex, drawCardFromDeck, endTurn, playDirection, players]
     );
 
     const getNextPlayerIndex = (
@@ -275,7 +275,8 @@ export function useUnoGame(numPlayers: number) {
             deck,
             reshuffleDeck,
             applyCardEffect,
-            endTurn
+            endTurn,
+            numPlayers
         ]
     );
 

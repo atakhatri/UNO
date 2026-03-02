@@ -75,6 +75,18 @@ function Game() {
     ) {
       setUnoButtonClickedThisTurn(false);
     }
+
+    // Set local card back preference based on user's equipped item in game state
+    const myPlayer = game?.players.find((p) => p.uid === userId);
+    if (myPlayer && (myPlayer as any).equippedCardBack) {
+      const designKey = (myPlayer as any).equippedCardBack.replace(
+        "card_back_",
+        "",
+      );
+      if (designKey in cardBackDesigns) {
+        setCardBack(designKey as keyof typeof cardBackDesigns);
+      }
+    }
   }, [game?.currentPlayerIndex, userId, game?.players]);
 
   useEffect(() => {
@@ -128,6 +140,37 @@ function Game() {
   const user = game.players.find((p) => p.uid === userId);
   const player = game.players.find((p) => p.uid === userId);
   const opponents = game.players.filter((p) => p.uid !== userId);
+
+  // Helper functions for card backs
+  const getCardBackStyle = (design: keyof typeof cardBackDesigns) => {
+    const cardDesign = cardBackDesigns[design];
+    if (cardDesign.type === "image") {
+      return {
+        backgroundImage: `url(${cardDesign.value})`,
+        backgroundSize: "100% 100%",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      };
+    }
+    return {};
+  };
+
+  const getCardBackClassName = (design: keyof typeof cardBackDesigns) => {
+    const cardDesign = cardBackDesigns[design];
+    if (cardDesign.type === "color") {
+      return cardDesign.value;
+    }
+    return "bg-gray-800"; // fallback for images
+  };
+
+  const getPlayerCardBack = (p: Player) => {
+    const equipped = (p as any).equippedCardBack;
+    if (equipped) {
+      const key = equipped.replace("card_back_", "");
+      if (key in cardBackDesigns) return key as keyof typeof cardBackDesigns;
+    }
+    return "default";
+  };
 
   const topOfDiscard =
     game.discardPile && game.discardPile.length > 0
@@ -243,9 +286,10 @@ function Game() {
               <div className="flex justify-center h-24 md:h-28 items-center">
                 {/* Simple card back showing count */}
                 <div
-                  className={`w-16 h-24 md:w-20 md:h-28 ${cardBackDesigns[cardBack]} rounded-md flex items-center justify-center border border-black shadow-md`}
+                  className={`w-16 h-24 md:w-20 md:h-28 ${getCardBackClassName(getPlayerCardBack(opponent))} rounded-md flex items-center justify-center border border-black shadow-md overflow-hidden`}
+                  style={getCardBackStyle(getPlayerCardBack(opponent))}
                 >
-                  <span className="font-bold text-base md:text-lg text-white">
+                  <span className="font-bold text-base md:text-lg text-white drop-shadow-lg bg-black/40 px-2 py-1 rounded">
                     {opponent.hand.length}
                   </span>
                 </div>
@@ -287,23 +331,24 @@ function Game() {
           >
             {(game.deck?.length ?? 0) > 2 && (
               <div
-                className={`absolute top-1 left-1 w-full h-full ${cardBackDesigns[cardBack]} rounded-xl border-4 border-white shadow-lg`}
+                className={`absolute top-1 left-1 w-full h-full ${getCardBackClassName(cardBack)} rounded-xl border-4 border-white shadow-lg overflow-hidden`}
+                style={getCardBackStyle(cardBack)}
               ></div>
             )}
             {(game.deck?.length ?? 0) > 1 && (
               <div
-                className={`absolute top-0.5 left-0.5 w-full h-full ${cardBackDesigns[cardBack]} rounded-xl border-4 border-white shadow-lg`}
+                className={`absolute top-0.5 left-0.5 w-full h-full ${getCardBackClassName(cardBack)} rounded-xl border-4 border-white shadow-lg overflow-hidden`}
+                style={getCardBackStyle(cardBack)}
               ></div>
             )}
             {(game.deck?.length ?? 0) > 0 ? (
               <div
-                className={`absolute inset-0 w-full h-full ${
-                  cardBackDesigns[cardBack]
-                } rounded-xl border-4 border-white shadow-lg group-hover:scale-105 group-hover:-translate-y-2 transition-transform duration-200 ${
+                className={`absolute inset-0 w-full h-full ${getCardBackClassName(cardBack)} rounded-xl border-4 border-white shadow-lg group-hover:scale-105 group-hover:-translate-y-2 transition-transform duration-200 overflow-hidden ${
                   isPlayerTurn && !hasPlayableCard
                     ? "animate-[pulse-glow_1.5s_ease-in-out_infinite]"
                     : ""
                 }`}
+                style={getCardBackStyle(cardBack)}
               ></div>
             ) : (
               <div className="w-full h-full rounded-xl bg-black/20 border-4 border-white/50 flex items-center justify-center text-white/50 text-xs text-center p-2">
@@ -609,7 +654,7 @@ function Game() {
             </div>
             <div className="space-y-6">
               {/* Card Suggestions Toggle */}
-              <div className="border-b border-white/10 pb-6">
+              <div>
                 <h3 className="font-semibold mb-3">Gameplay</h3>
                 <div className="flex items-center justify-between bg-gray-700/50 p-3 rounded-lg">
                   <label htmlFor="card-suggestions" className="text-white/90">
@@ -630,40 +675,8 @@ function Game() {
                   </button>
                 </div>
               </div>
-              {/* Card Back Design */}
-              <div>
-                <h3 className="font-semibold mb-3">Card Back Design</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  {(
-                    Object.keys(
-                      cardBackDesigns,
-                    ) as (keyof typeof cardBackDesigns)[]
-                  ).map((design) => (
-                    <button
-                      key={design}
-                      onClick={() => setCardBack(design)}
-                      className={`relative h-20 md:h-24 rounded-lg border-2 transition-all ${
-                        cardBack === design
-                          ? "border-blue-500 scale-105"
-                          : "border-transparent hover:border-white/50"
-                      }`}
-                    >
-                      <div
-                        className={`w-full h-full ${cardBackDesigns[design]} rounded-md flex items-center justify-center border border-black`}
-                      >
-                        <span className="text-white font-bold text-sm md:text-lg">
-                          UNO
-                        </span>
-                      </div>
-                      <p className="text-xs md:text-sm mt-1 md:mt-2 capitalize font-medium">
-                        {design}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              </div>
               {/* Leave Game Button */}
-              <div className=" pt-4 border-t border-white/10">
+              <div className="pt-4 border-t border-white/10">
                 <button
                   onClick={handleLeaveGame}
                   className="w-full px-6 py-3 bg-red-600/80 hover:bg-red-700/80 rounded-lg text-lg font-semibold"

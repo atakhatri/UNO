@@ -28,7 +28,9 @@ export interface GameState {
 }
 
 export const cardBackDesigns = {
-    default: "bg-red-600",
-    blue: "bg-blue-800",
-    green: "bg-green-700",
+    default: { type: 'color' as const, value: 'bg-red-600' },
+    blue: { type: 'color' as const, value: 'bg-blue-800' },
+    green: { type: 'color' as const, value: 'bg-green-700' },
+    neon: { type: 'image' as const, value: '/store/card-back/neon.png' },
+    dragon: { type: 'image' as const, value: '/store/card-back/dragon.png' },
 };

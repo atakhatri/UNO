@@ -33,6 +33,7 @@ interface UserProfile {
   pendingRequests: string[];
   sentRequests: string[];
   coins?: number;
+  equippedCardBack?: string;
 }
 
 interface GameInvite {
@@ -151,15 +152,16 @@ export default function Home() {
 
     try {
       const newGameId = generateGameId();
-      const hostPlayer: Player = {
+      const hostPlayer = {
         uid: user.uid,
         name: currentDisplayName,
         hand: [],
+        equippedCardBack: userProfile?.equippedCardBack,
       };
       const newGame: Partial<GameState> = {
         gameId: newGameId,
         hostId: user.uid,
-        players: [hostPlayer],
+        players: [hostPlayer as Player],
         status: "waiting",
       };
       const gameDocRef = getGameDocRef(newGameId);
@@ -223,23 +225,39 @@ export default function Home() {
         return;
       }
 
-      const newPlayer: Player = {
+      const newPlayer = {
         uid: user.uid,
         name: currentDisplayName,
         hand: [],
+        equippedCardBack: userProfile?.equippedCardBack || "default",
       };
+
+      console.log("Attempting to join game:", gameId);
+      console.log("Current players:", gameData.players.length);
+      console.log("New player:", newPlayer);
+
+      // Add new player to existing players array
+      const updatedPlayers = [...gameData.players, newPlayer];
+
+      console.log("Updated players count:", updatedPlayers.length);
+
       await updateDoc(gameDocRef, {
-        players: arrayUnion(newPlayer),
+        players: updatedPlayers,
       });
+
+      console.log("Successfully updated game document");
 
       if (inviteGameId) {
         await deleteGameInvite(user.uid, inviteGameId);
       }
 
+      setLoading(false);
       router.push(`/game/${gameId}`);
     } catch (err) {
       console.error("Error joining game:", err);
-      setError("Failed to join game. Please try again.");
+      setError(
+        `Failed to join game: ${err instanceof Error ? err.message : "Unknown error"}`,
+      );
       setLoading(false);
     }
   };
