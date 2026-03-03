@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { FaUser, FaTrophy, FaIdCard, FaCog, FaStore } from "react-icons/fa";
 import { Coins } from "lucide-react";
@@ -24,6 +25,7 @@ interface HeaderProps {
   userProfile: UserProfile | null;
   friendsDetails: UserProfile[];
   pendingRequestsDetails: UserProfile[];
+  onAuthRequired: () => void;
 }
 
 export const Header = ({
@@ -31,9 +33,11 @@ export const Header = ({
   userProfile,
   friendsDetails,
   pendingRequestsDetails,
+  onAuthRequired,
 }: HeaderProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -54,6 +58,15 @@ export const Header = ({
       notation: "compact",
       maximumFractionDigits: 1,
     }).format(coins);
+  };
+
+  const handleProtectedLinkClick = (path: string) => {
+    setIsMenuOpen(false);
+    if (!user) {
+      onAuthRequired();
+    } else {
+      router.push(path);
+    }
   };
 
   return (
@@ -105,10 +118,9 @@ export const Header = ({
           </Link>
 
           {/* Achievements Item */}
-          <Link
-            href="/achievements"
+          <button
+            onClick={() => handleProtectedLinkClick("/achievements")}
             className="relative group flex items-center justify-center"
-            onClick={() => setIsMenuOpen(false)}
           >
             <div className="absolute right-full mr-4 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
               Achievements
@@ -116,13 +128,12 @@ export const Header = ({
             <div className="w-11 h-11 bg-white/20 p-2 rounded-full text-white shadow-lg hover:bg-yellow-400 hover:scale-110 transition-all flex items-center justify-center border border-white/20">
               <FaTrophy size={20} />
             </div>
-          </Link>
+          </button>
 
           {/* Store Item */}
-          <Link
-            href="/store"
+          <button
+            onClick={() => handleProtectedLinkClick("/store")}
             className="relative group flex items-center justify-center"
-            onClick={() => setIsMenuOpen(false)}
           >
             <div className="absolute right-full mr-4 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
               Store
@@ -130,7 +141,7 @@ export const Header = ({
             <div className="w-11 h-11 bg-white/20 p-2 rounded-full text-white shadow-lg hover:bg-purple-500 hover:scale-110 transition-all flex items-center justify-center border border-white/20">
               <FaStore size={20} />
             </div>
-          </Link>
+          </button>
         </div>
 
         {/* New Player Tooltip */}

@@ -303,6 +303,7 @@ export default function Home() {
           userProfile={userProfile}
           friendsDetails={friendsDetails}
           pendingRequestsDetails={pendingRequestsDetails}
+          onAuthRequired={() => setShowLoginPrompt(true)}
         />
 
         {/* --- NEW: Game Invite Notifications --- */}
