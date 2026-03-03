@@ -1,9 +1,9 @@
 "use client";
 
-import { FaCog, FaTimes, FaPaperPlane } from "react-icons/fa";
+import { FaCog, FaTimes, FaPaperPlane, FaComment } from "react-icons/fa";
 import { CardComponent } from "@/app/Card";
 import { useRouter, useParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import { Color, cardBackDesigns, Player } from "../game-types";
 import type { Card } from "../../game-logic";
 import { useMultiplayerUnoGame } from "./useMultiplayerUnoGame";
@@ -41,10 +41,12 @@ function Game() {
     playCard,
     drawCard,
     selectColor,
+    passTurn,
     callUno,
     leaveGame,
     unlockedAchievement,
     winCoins,
+    sendChatMessage,
   } = useMultiplayerUnoGame(gameId);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -57,6 +59,25 @@ function Game() {
 
   const [friendsDetails, setFriendsDetails] = useState<UserProfile[]>([]);
   const [sentInvites, setSentInvites] = useState<string[]>([]);
+
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to bottom of chat
+  useEffect(() => {
+    if (isChatOpen && chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [isChatOpen, game?.chatMessages]);
+
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (chatInput.trim()) {
+      sendChatMessage(chatInput);
+      setChatInput("");
+    }
+  };
 
   useEffect(() => {
     if (localMessage) {
@@ -237,6 +258,10 @@ function Game() {
     }
   };
 
+  const handlePassTurn = () => {
+    passTurn();
+  };
+
   const handleLeaveGame = async () => {
     await leaveGame();
     router.push("/");
@@ -331,19 +356,19 @@ function Game() {
           >
             {(game.deck?.length ?? 0) > 2 && (
               <div
-                className={`absolute top-1 left-1 w-full h-full ${getCardBackClassName(cardBack)} rounded-xl border-4 border-white shadow-lg overflow-hidden`}
+                className={`absolute top-1 left-1 w-full h-full ${getCardBackClassName(cardBack)} rounded-xl border-2 border-white shadow-lg overflow-hidden`}
                 style={getCardBackStyle(cardBack)}
               ></div>
             )}
             {(game.deck?.length ?? 0) > 1 && (
               <div
-                className={`absolute top-0.5 left-0.5 w-full h-full ${getCardBackClassName(cardBack)} rounded-xl border-4 border-white shadow-lg overflow-hidden`}
+                className={`absolute top-0.5 left-0.5 w-full h-full ${getCardBackClassName(cardBack)} rounded-xl border-2 border-white shadow-lg overflow-hidden`}
                 style={getCardBackStyle(cardBack)}
               ></div>
             )}
             {(game.deck?.length ?? 0) > 0 ? (
               <div
-                className={`absolute inset-0 w-full h-full ${getCardBackClassName(cardBack)} rounded-xl border-4 border-white shadow-lg group-hover:scale-105 group-hover:-translate-y-2 transition-transform duration-200 overflow-hidden ${
+                className={`absolute inset-0 w-full h-full ${getCardBackClassName(cardBack)} rounded-xl border-2 border-white shadow-lg group-hover:scale-105 group-hover:-translate-y-2 transition-transform duration-200 overflow-hidden ${
                   isPlayerTurn && !hasPlayableCard
                     ? "animate-[pulse-glow_1.5s_ease-in-out_infinite]"
                     : ""
@@ -351,7 +376,7 @@ function Game() {
                 style={getCardBackStyle(cardBack)}
               ></div>
             ) : (
-              <div className="w-full h-full rounded-xl bg-black/20 border-4 border-white/50 flex items-center justify-center text-white/50 text-xs text-center p-2">
+              <div className="w-full h-full rounded-xl bg-black/20 border-2 border-white/50 flex items-center justify-center text-white/50 text-xs text-center p-2">
                 Deck Empty
               </div>
             )}
@@ -364,6 +389,14 @@ function Game() {
           aria-label="Open settings"
         >
           <FaCog size="1.5rem" />
+        </button>
+        {/* Chat Button */}
+        <button
+          onClick={() => setIsChatOpen(true)}
+          className="p-3 mt-6 ml-4 bg-white/10 rounded-full hover:bg-white/20 transition-colors relative"
+          aria-label="Open chat"
+        >
+          <FaComment size="1.5rem" />
         </button>
 
         {/* Discard Pile */}
@@ -424,11 +457,11 @@ function Game() {
 
         {/* --- UNO Button --- */}
         {showUnoButton && (
-          <div className="absolute -top-10 md:-top-12 left-1/2 -translate-x-1/2 z-20">
+          <div className="absolute -top-12 md:-top-12 left-1/2 -translate-x-1/2 z-20">
             <button
               onClick={handleCallUno}
               disabled={unoButtonClickedThisTurn}
-              className={`px-6 py-3 rounded-full font-bold text-xl transition-all shadow-lg border-2 border-black transform active:scale-95
+              className={`px-6 py-2 mt-1 rounded-full font-bold text-xl transition-all shadow-lg border-2 border-black transform active:scale-95
                          ${
                            unoButtonClickedThisTurn
                              ? "bg-green-500 text-white scale-105 cursor-default"
@@ -437,6 +470,19 @@ function Game() {
               title={unoButtonClickedThisTurn ? "UNO Called!" : "Call UNO!"}
             >
               UNO!
+            </button>
+          </div>
+        )}
+
+        {/* --- Pass Button --- */}
+        {isPlayerTurn && game.hasDrawnCard && !isAwaitingColorChoice && (
+          <div className="absolute -top-24 md:-top-18 left-1/2 -translate-x-1/2 z-20">
+            <button
+              onClick={handlePassTurn}
+              className="px-4 py-2 rounded-full font-bold text-lg bg-gray-600 hover:bg-gray-500 text-white shadow-lg border-2 border-white/20 transition-all active:scale-95"
+              title="Pass turn"
+            >
+              Pass
             </button>
           </div>
         )}
@@ -605,10 +651,10 @@ function Game() {
         </div>
       )}
       {/* Game Message Popup */}
-      {(game.gameMessage || localMessage) && !isAwaitingColorChoice && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] max-w-lg mt-40 md:mt-38 z-50 pointer-events-none">
+      {localMessage && !isAwaitingColorChoice && (
+        <div className="absolute top-1/5 md:top-1/7 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] max-w-lg mt-40 md:mt-38 z-50 pointer-events-none">
           <div className="bg-black/50 backdrop-blur-md text-white font-bold text-xl md:text-2xl px-4 py-2 md:px-2 md:py-1 rounded-2xl shadow-2xl animate-pulse text-center">
-            {localMessage || game.gameMessage}
+            {localMessage}
           </div>
         </div>
       )}
@@ -688,6 +734,75 @@ function Game() {
           </div>
         </div>
       )}
+
+      {/* Chat Modal/Sheet */}
+      {isChatOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+            onClick={() => setIsChatOpen(false)}
+          />
+
+          {/* Chat Window */}
+          <div className="relative bg-gray-900/95 border-t border-white/20 w-full h-[50vh] rounded-t-2xl flex flex-col shadow-2xl animate-slide-up">
+            <div className="flex justify-between items-center p-4 border-b border-white/10">
+              <h3 className="font-bold text-lg">Game Chat</h3>
+              <button
+                onClick={() => setIsChatOpen(false)}
+                className="p-2 hover:bg-white/10 rounded-full"
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {game.chatMessages?.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex flex-col ${msg.type === "system" ? "items-center" : msg.sender === player?.name ? "items-end" : "items-start"}`}
+                >
+                  {msg.type === "system" ? (
+                    <span className="bg-white/10 text-yellow-300 text-xs px-2 py-1 rounded-full">
+                      {msg.text}
+                    </span>
+                  ) : (
+                    <div
+                      className={`max-w-[80%] rounded-lg p-2 ${msg.sender === player?.name ? "bg-blue-600" : "bg-gray-700"}`}
+                    >
+                      <p className="text-xs text-white/50 mb-0.5">
+                        {msg.sender}
+                      </p>
+                      <p className="text-sm">{msg.text}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+              <div ref={chatEndRef} />
+            </div>
+
+            <form
+              onSubmit={handleSendMessage}
+              className="p-4 border-t border-white/10 flex gap-2"
+            >
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Type a message..."
+                className="flex-1 bg-black/30 border border-white/20 rounded-full px-4 py-2 focus:outline-none focus:border-blue-500"
+              />
+              <button
+                type="submit"
+                className="p-3 bg-blue-600 rounded-full hover:bg-blue-500 transition-colors"
+              >
+                <FaPaperPlane size="1rem" />
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Color Picker Modal */}
       {isAwaitingColorChoice && (
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">

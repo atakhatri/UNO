@@ -26,6 +26,7 @@ export function useUnoGame(numPlayers: number) {
     const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
     const [playedWildCard, setPlayedWildCard] = useState<Card | null>(null);
     const [playerCalledUno, setPlayerCalledUno] = useState(false);
+    const [hasDrawnCard, setHasDrawnCard] = useState(false);
 
     const [gameMessage, setGameMessage] = useState<string | null>(null);
     const [animatedCard, setAnimatedCard] = useState<AnimatedCard | null>(null);
@@ -64,6 +65,7 @@ export function useUnoGame(numPlayers: number) {
             if (currentPlayer?.id === 0) {
                 setPlayerCalledUno(false);
             }
+            setHasDrawnCard(false);
 
             const nextIndex =
                 (currentPlayerIndex + playDirection * skip + players.length) %
@@ -309,10 +311,15 @@ export function useUnoGame(numPlayers: number) {
             );
             setDeck(remaining);
             setAnimatedCard(null);
-            setGameMessage("You drew a card.");
-            endTurn();
+            if (isCardPlayable(drawn[0], topOfDiscard)) {
+                setGameMessage("You drew a playable card!");
+                setHasDrawnCard(true);
+            } else {
+                setGameMessage("You drew a card.");
+                endTurn();
+            }
         }, ANIMATION_DURATION);
-    }, [isPlayerTurn, winner, deck, reshuffleDeck, endTurn]);
+    }, [isPlayerTurn, winner, deck, reshuffleDeck, endTurn, topOfDiscard]);
 
     const computerTurnLogic = useCallback(() => {
         if (winner || isPlayerTurn) return;
@@ -426,6 +433,11 @@ export function useUnoGame(numPlayers: number) {
         }
     };
 
+    const passTurn = useCallback(() => {
+        setGameMessage("You passed.");
+        endTurn();
+    }, [endTurn]);
+
     const selectColor = (color: Color) => {
         if (playedWildCard) {
             applyCardEffect(playedWildCard, color);
@@ -475,6 +487,7 @@ export function useUnoGame(numPlayers: number) {
         setPlayerCalledUno(false);
         setIsColorPickerOpen(false);
         setPlayedWildCard(null);
+        setHasDrawnCard(false);
         setGameMessage("Game started!");
     }, [numPlayers]);
 
@@ -528,8 +541,10 @@ export function useUnoGame(numPlayers: number) {
         gameMessage,
         animatedCard,
         isPlayerTurn,
+        hasDrawnCard,
         playCard,
         drawCard,
+        passTurn,
         callUno,
         selectColor,
         startGame,

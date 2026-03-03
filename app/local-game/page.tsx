@@ -32,8 +32,10 @@ function Game() {
     gameMessage,
     animatedCard,
     isPlayerTurn,
+    hasDrawnCard,
     playCard,
     drawCard,
+    passTurn,
     callUno,
     playerCalledUno,
     selectColor,
@@ -173,19 +175,19 @@ function Game() {
           >
             {deck.length > 2 && (
               <div
-                className={`absolute top-1 left-1 w-full h-full ${getCardBackClassName(cardBack)} rounded-xl border-4 border-white shadow-lg overflow-hidden`}
+                className={`absolute top-1 left-1 w-full h-full ${getCardBackClassName(cardBack)} rounded-xl border-2 border-white shadow-lg overflow-hidden`}
                 style={getCardBackStyle(cardBack)}
               ></div>
             )}
             {deck.length > 1 && (
               <div
-                className={`absolute top-0.5 left-0.5 w-full h-full ${getCardBackClassName(cardBack)} rounded-xl border-4 border-white shadow-lg overflow-hidden`}
+                className={`absolute top-0.5 left-0.5 w-full h-full ${getCardBackClassName(cardBack)} rounded-xl border-2 border-white shadow-lg overflow-hidden`}
                 style={getCardBackStyle(cardBack)}
               ></div>
             )}
             {deck.length > 0 ? (
               <div
-                className={`absolute inset-0 w-full h-full ${getCardBackClassName(cardBack)} rounded-xl border-4 border-white shadow-lg group-hover:scale-105 group-hover:-translate-y-2 transition-transform duration-200 overflow-hidden ${
+                className={`absolute inset-0 w-full h-full ${getCardBackClassName(cardBack)} rounded-xl border-2 border-white shadow-lg group-hover:scale-105 group-hover:-translate-y-2 transition-transform duration-200 overflow-hidden ${
                   isPlayerTurn && !hasPlayableCard
                     ? "animate-[pulse-glow_1.5s_ease-in-out_infinite]"
                     : ""
@@ -193,7 +195,7 @@ function Game() {
                 style={getCardBackStyle(cardBack)}
               ></div>
             ) : (
-              <div className="w-full h-full rounded-xl bg-black/20 border-4 border-white/50 flex items-center justify-center text-white/50 text-xs text-center p-2">
+              <div className="w-full h-full rounded-xl bg-black/20 border-2 border-white/50 flex items-center justify-center text-white/50 text-xs text-center p-2">
                 Deck Empty
               </div>
             )}
@@ -255,7 +257,7 @@ function Game() {
       </div>
 
       {/* Player's Hand */}
-      <div className="w-full mt-2 md:mt-0">
+      <div className="w-full mt-2 md:mt-0 relative">
         <h2
           className={`text-base md:text-xl font-bold mb-2 text-center transition-all ${
             isPlayerTurn ? "text-yellow-300 scale-105" : "text-white"
@@ -278,6 +280,19 @@ function Game() {
               title={playerCalledUno ? "UNO Called!" : "Call UNO!"}
             >
               UNO!
+            </button>
+          </div>
+        )}
+
+        {/* --- Pass Button --- */}
+        {isPlayerTurn && hasDrawnCard && !isColorPickerOpen && (
+          <div className="absolute -top-24 md:-top-28 left-1/2 -translate-x-1/2 z-20">
+            <button
+              onClick={passTurn}
+              className="px-6 py-2 rounded-full font-bold text-lg bg-gray-600 hover:bg-gray-500 text-white shadow-lg border-2 border-white/20 transition-all active:scale-95"
+              title="Pass turn"
+            >
+              Pass
             </button>
           </div>
         )}

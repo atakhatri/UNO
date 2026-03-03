@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { GameState, Player, Color } from "../game-types";
+import { GameState, Player, Color, ChatMessage } from "../game-types";
 import type { Card } from "../../game-logic";
 import {
     createDeck,
@@ -10,7 +10,7 @@ import {
     isCardPlayable,
 } from "../../game-logic";
 import { db, getUserId, getGameDocRef, getUserDocRef, awardCoinsForWin } from "../../lib/firebase";
-import { doc, onSnapshot, updateDoc, increment } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, increment, arrayUnion } from "firebase/firestore";
 import { updateAchievement, resetStreaks, ACHIEVEMENTS_LIST, AchievementDef } from "../../lib/achievements";
 
 export function useMultiplayerUnoGame(gameId: string) {
@@ -236,6 +236,13 @@ export function useMultiplayerUnoGame(gameId: string) {
                     playerInUnoState: null,
                     chosenColor: game.chosenColor,
                 });
+                // Add system message for penalty
+                await updateDoc(gameDocRef, {
+                    chatMessages: arrayUnion({
+                        id: `${Date.now()}-sys`, sender: 'System', text: `${playerToPenalize.name} forgot to call UNO! Draws 2.`, timestamp: Date.now(), type: 'system'
+                    })
+                });
+
                 updateAchievement(playerToPenalize.uid, 'dumbass-1', 1);
             } else {
                 await clearUnoCheck();
@@ -324,6 +331,8 @@ export function useMultiplayerUnoGame(gameId: string) {
                 winnerId: null,
                 playerInUnoState: null,
                 pendingUnoCallCheck: null,
+                hasDrawnCard: false,
+                chatMessages: [],
             });
         } catch (err) {
             console.error("Error starting game:", err);
@@ -374,6 +383,7 @@ export function useMultiplayerUnoGame(gameId: string) {
             const newHand = [...currentPlayer.hand];
             newHand.splice(cardIndex, 1);
 
+            let message = "";
             let updates: Partial<GameState> = {
                 players: game.players.map((p) =>
                     p.uid === userId ? { ...p, hand: newHand } : p
@@ -384,6 +394,7 @@ export function useMultiplayerUnoGame(gameId: string) {
                 gameMessage: "",
                 pendingUnoCallCheck: null,
                 playDirection: game.playDirection,
+                hasDrawnCard: false,
             };
 
             updates.animatedCard = {
@@ -403,12 +414,12 @@ export function useMultiplayerUnoGame(gameId: string) {
                     sessionStats.current.unoCallCount += 1; // Achievement: Unlucky tracker
                     updates.playerInUnoState = userId;
                     updates.pendingUnoCallCheck = null;
-                    updates.gameMessage = `${currentPlayer.name} calls UNO! `;
+                    message = `${currentPlayer.name} calls UNO! `;
                 } else {
                     console.log(currentPlayer.name, "did NOT call UNO!");
                     updates.playerInUnoState = null;
                     updates.pendingUnoCallCheck = userId;
-                    updates.gameMessage = `${currentPlayer.name} has one card left! `;
+                    message = `${currentPlayer.name} has one card left! `;
                 }
             } else if (newHand.length !== 1 && game.playerInUnoState === userId) {
                 console.log(currentPlayer.name, "is no longer in UNO state.");
@@ -422,7 +433,7 @@ export function useMultiplayerUnoGame(gameId: string) {
             if (newHand.length === 0) {
                 updates.status = "finished";
                 updates.winnerId = userId;
-                updates.gameMessage += `${currentPlayer.name} Wins!`;
+                message += `${currentPlayer.name} Wins!`;
                 updates.playerInUnoState = null;
                 updates.pendingUnoCallCheck = null;
 
@@ -460,6 +471,11 @@ export function useMultiplayerUnoGame(gameId: string) {
                     updateAchievement(userId, 'wild-1', 1);
                 }
 
+                updates.gameMessage = message;
+                updates.chatMessages = arrayUnion({
+                    id: `${Date.now()}-sys`, sender: 'System', text: message, timestamp: Date.now(), type: 'system'
+                }) as any;
+
                 const gameDocRef = getGameDocRef(gameId);
                 await updateDoc(gameDocRef, updates);
                 return;
@@ -474,7 +490,7 @@ export function useMultiplayerUnoGame(gameId: string) {
 
             if (card.color === "black") {
                 updates.currentPlayerIndex = game.currentPlayerIndex;
-                updates.gameMessage += `Choose a color.`;
+                message += `Choose a color.`;
                 if (card.value === 'wild-draw-four') {
                     updateAchievement(userId, 'bomber-1', 1);
                     updateAchievement(userId, 'bomber-2', 1);
@@ -509,7 +525,7 @@ export function useMultiplayerUnoGame(gameId: string) {
                             if (updates.playerInUnoState === currentPlayers[playerToDrawIndex].uid) {
                                 updates.playerInUnoState = null;
                             }
-                            updates.gameMessage += `${currentPlayers[playerToDrawIndex].name} draws 2! `;
+                            message += `${currentPlayers[playerToDrawIndex].name} draws 2! `;
                         }
                         nextPlayerIndex = getNextPlayerIndex(game.currentPlayerIndex, game.playDirection, 2);
                         break;
@@ -527,7 +543,7 @@ export function useMultiplayerUnoGame(gameId: string) {
                         if (currentPlayers[skippedPlayerIndex]?.hand.length === 1) {
                             updateAchievement(userId, 'denial', 1);
                         }
-                        updates.gameMessage += `${currentPlayers[skippedPlayerIndex]?.name ?? 'Next player'} was skipped! `;
+                        message += `${currentPlayers[skippedPlayerIndex]?.name ?? 'Next player'} was skipped! `;
                         nextPlayerIndex = getNextPlayerIndex(game.currentPlayerIndex, game.playDirection, 2);
                         break;
                     case "reverse":
@@ -537,7 +553,7 @@ export function useMultiplayerUnoGame(gameId: string) {
                         sessionStats.current.consecutiveSkips = 0; // Reset skip streak
                         updates.playDirection = (game.playDirection * -1) as 1 | -1;
                         nextPlayerIndex = getNextPlayerIndex(game.currentPlayerIndex, updates.playDirection);
-                        updates.gameMessage += "Play reversed! ";
+                        message += "Play reversed! ";
                         break;
                     default:
                         sessionStats.current.consecutiveSkips = 0; // Reset skip streak
@@ -546,9 +562,14 @@ export function useMultiplayerUnoGame(gameId: string) {
                 updates.players = currentPlayers;
                 updates.currentPlayerIndex = nextPlayerIndex;
                 const nextPlayerName = currentPlayers[nextPlayerIndex]?.name;
-                updates.gameMessage += nextPlayerName ? `${nextPlayerName}'s turn.` : '';
+                message += nextPlayerName ? `${nextPlayerName}'s turn.` : '';
 
             }
+            updates.gameMessage = message;
+            updates.chatMessages = arrayUnion({
+                id: `${Date.now()}-sys`, sender: 'System', text: message, timestamp: Date.now(), type: 'system'
+            }) as any;
+
             const gameDocRef = getGameDocRef(gameId);
             await updateDoc(gameDocRef, updates);
 
@@ -580,7 +601,7 @@ export function useMultiplayerUnoGame(gameId: string) {
                 return;
             }
 
-            let updates: Partial<GameState> = { chosenColor: null };
+            let updates: Partial<GameState> = { chosenColor: null, hasDrawnCard: false };
             let nextPlayerIndex = getNextPlayerIndex(currentPlayerIndex, game.playDirection);
             let newDeck = [...(game.deck || [])];
             let newDiscard = [...(game.discardPile || [])];
@@ -609,9 +630,13 @@ export function useMultiplayerUnoGame(gameId: string) {
 
             updates.currentPlayerIndex = nextPlayerIndex;
             const nextPlayerName = newPlayers[nextPlayerIndex]?.name;
-            updates.gameMessage = `Color is ${color}. ${nextPlayerName ? `${nextPlayerName}'s turn.` : ''}`;
+            const message = `Color is ${color}. ${nextPlayerName ? `${nextPlayerName}'s turn.` : ''}`;
+            updates.gameMessage = message;
             updates.deck = newDeck;
             updates.discardPile = newDiscard;
+            updates.chatMessages = arrayUnion({
+                id: `${Date.now()}-sys`, sender: 'System', text: message, timestamp: Date.now(), type: 'system'
+            }) as any;
 
             const gameDocRef = getGameDocRef(gameId);
             await updateDoc(gameDocRef, updates);
@@ -647,20 +672,36 @@ export function useMultiplayerUnoGame(gameId: string) {
                 p.uid === userId ? { ...p, hand: newHand } : p
             );
 
-            const newCurrentPlayerIndex = getNextPlayerIndex(
-                game.currentPlayerIndex,
-                game.playDirection
-            );
+            // Check if the drawn card is playable
+            const topCard = currentDiscardPile[currentDiscardPile.length - 1];
+            const effectiveColor = game.chosenColor || topCard.color;
+            const effectiveTop = { ...topCard, color: effectiveColor };
+            const isPlayable = isCardPlayable(drawnCard, effectiveTop);
+
+            let newCurrentPlayerIndex = game.currentPlayerIndex;
+            let message = `${currentPlayer.name} drew a card.`;
+            let hasDrawnCardValue = false;
+
+            if (!isPlayable) {
+                newCurrentPlayerIndex = getNextPlayerIndex(game.currentPlayerIndex, game.playDirection);
+                message += ` ${newPlayers[newCurrentPlayerIndex]?.name ?? ''}'s turn.`;
+            } else {
+                hasDrawnCardValue = true;
+            }
 
             const updates: Partial<GameState> = {
                 players: newPlayers,
                 deck: drawResult.updatedDeck,
                 discardPile: drawResult.updatedDiscard,
                 currentPlayerIndex: newCurrentPlayerIndex,
-                gameMessage: `${currentPlayer.name} drew a card. ${newPlayers[newCurrentPlayerIndex]?.name ?? ''}'s turn.`,
+                gameMessage: message,
                 chosenColor: game.chosenColor,
                 pendingUnoCallCheck: null,
+                hasDrawnCard: hasDrawnCardValue,
             };
+            updates.chatMessages = arrayUnion({
+                id: `${Date.now()}-sys`, sender: 'System', text: message, timestamp: Date.now(), type: 'system'
+            }) as any;
 
             if (game.playerInUnoState === userId) {
                 updates.playerInUnoState = null;
@@ -684,6 +725,29 @@ export function useMultiplayerUnoGame(gameId: string) {
         }, 400);
     };
 
+    const passTurn = async () => {
+        if (!game || !userId || game.status !== "playing") return;
+        const currentPlayer = game.players[game.currentPlayerIndex];
+        if (currentPlayer?.uid !== userId) return;
+
+        const nextPlayerIndex = getNextPlayerIndex(game.currentPlayerIndex, game.playDirection);
+        const nextPlayerName = game.players[nextPlayerIndex]?.name;
+
+        const message = `${currentPlayer.name} passed. ${nextPlayerName ? `${nextPlayerName}'s turn.` : ''}`;
+        const updates: Partial<GameState> = {
+            currentPlayerIndex: nextPlayerIndex,
+            hasDrawnCard: false,
+            gameMessage: message,
+            chosenColor: game.chosenColor, // Preserve color if it was set (though usually cleared on play)
+            chatMessages: arrayUnion({
+                id: `${Date.now()}-sys`, sender: 'System', text: message, timestamp: Date.now(), type: 'system'
+            }) as any
+        };
+
+        const gameDocRef = getGameDocRef(gameId);
+        await updateDoc(gameDocRef, updates);
+    };
+
     const leaveGame = async () => {
         if (!game || !userId) return;
 
@@ -701,12 +765,14 @@ export function useMultiplayerUnoGame(gameId: string) {
             return;
         }
 
+        let message = "";
         const updates: Partial<GameState> = { players: updatedPlayers };
 
         if (updatedPlayers.length < 2) {
             updates.status = "finished";
             updates.winnerId = updatedPlayers[0]?.uid ?? null;
-            updates.gameMessage = `${updatedPlayers[0]?.name ?? "The last player"} wins!`;
+            message = `${updatedPlayers[0]?.name ?? "The last player"} wins!`;
+            updates.gameMessage = message;
         } else {
             let newCurrentPlayerIndex = game.currentPlayerIndex;
 
@@ -719,8 +785,12 @@ export function useMultiplayerUnoGame(gameId: string) {
             }
 
             updates.currentPlayerIndex = newCurrentPlayerIndex;
-            updates.gameMessage = `${game.players[leavingPlayerIndex].name} left the game.`;
+            message = `${game.players[leavingPlayerIndex].name} left the game.`;
+            updates.gameMessage = message;
         }
+        updates.chatMessages = arrayUnion({
+            id: `${Date.now()}-sys`, sender: 'System', text: message, timestamp: Date.now(), type: 'system'
+        }) as any;
 
         try {
             const gameDocRef = getGameDocRef(gameId);
@@ -728,6 +798,29 @@ export function useMultiplayerUnoGame(gameId: string) {
         } catch (err) {
             console.error("Error updating game after player left:", err);
             setError("Failed to update game state after leaving.");
+        }
+    };
+
+    const sendChatMessage = async (text: string) => {
+        if (!game || !userId || !text.trim()) return;
+        const player = game.players.find(p => p.uid === userId);
+        if (!player) return;
+
+        const newMessage: ChatMessage = {
+            id: `${Date.now()}-${Math.random()}`,
+            sender: player.name,
+            text: text.trim(),
+            timestamp: Date.now(),
+            type: 'user'
+        };
+
+        try {
+            const gameDocRef = getGameDocRef(gameId);
+            await updateDoc(gameDocRef, {
+                chatMessages: arrayUnion(newMessage)
+            });
+        } catch (err) {
+            console.error("Error sending message:", err);
         }
     };
 
@@ -740,9 +833,11 @@ export function useMultiplayerUnoGame(gameId: string) {
         playCard,
         drawCard,
         selectColor,
+        passTurn,
         callUno,
         leaveGame,
         unlockedAchievement,
         winCoins,
+        sendChatMessage,
     };
 }

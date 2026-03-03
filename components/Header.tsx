@@ -76,11 +76,11 @@ export const Header = ({
         <span>{formatCoins(userProfile?.coins)}</span>
       </div>
 
-      <h1 className="text-5xl sm:text-5xl md:text-6xl font-bold text-white tracking-[0.5rem] sm:tracking-[1rem] -mr-2 sm:-mr-4">
+      {/* <h1 className="text-5xl sm:text-5xl md:text-6xl font-bold text-white tracking-[0.5rem] sm:tracking-[1rem] -mr-2 sm:-mr-4">
         <span className="heading u">U</span>
         <span className="heading n">N</span>
         <span className="heading o">O</span>
-      </h1>
+      </h1> */}
 
       {/* Profile/Menu Section */}
       <div className="relative flex flex-col items-center" ref={menuRef}>

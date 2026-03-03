@@ -14,6 +14,14 @@ export interface AnimatedCard {
     type: "play" | "draw";
 }
 
+export interface ChatMessage {
+    id: string;
+    sender: string;
+    text: string;
+    timestamp: number;
+    type: 'system' | 'user';
+}
+
 export interface GameState {
     gameId: string;
     hostId: string;
@@ -30,6 +38,8 @@ export interface GameState {
 
     playerInUnoState: string | null;
     pendingUnoCallCheck: string | null;
+    hasDrawnCard?: boolean;
+    chatMessages?: ChatMessage[];
 
 }
 
@@ -40,4 +50,5 @@ export const cardBackDesigns = {
     neon: { type: 'image' as const, value: '/store/card-back/neon.png' },
     dragon: { type: 'image' as const, value: '/store/card-back/dragon.png' },
     frostbite: { type: 'image' as const, value: '/store/card-back/frostbite.png' },
+    classic: { type: 'image' as const, value: '/store/card-back/basic-uno.png' },
 };

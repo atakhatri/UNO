@@ -1,7 +1,7 @@
 // c:\Users\atakh\OneDrive\Documents\GitHub\UNO\app\store\page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -42,9 +42,15 @@ export default function StorePage() {
   const [filter, setFilter] = useState<ItemType | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Select a featured item (e.g., the second item or the first one)
-  const featuredItem =
-    storeItems.length > 0 ? storeItems[1] || storeItems[0] : null;
+  // Select a random featured item from all items except the first one
+  const featuredItem = useMemo(() => {
+    const potentialItems = storeItems.slice(1);
+    if (potentialItems.length > 0) {
+      const randomIndex = Math.floor(Math.random() * potentialItems.length);
+      return potentialItems[randomIndex];
+    }
+    return null;
+  }, []);
 
   useEffect(() => {
     let unsubscribeSnapshot: (() => void) | undefined;

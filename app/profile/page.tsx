@@ -114,6 +114,10 @@ export default function ProfilePage() {
   const [showSearchInfo, setShowSearchInfo] = useState(false);
   const [isUidCopied, setIsUidCopied] = useState(false);
   const [previewItem, setPreviewItem] = useState<StoreItem | null>(null);
+  const [isRemoveMode, setIsRemoveMode] = useState(false);
+  const [friendToRemove, setFriendToRemove] = useState<UserProfile | null>(
+    null,
+  );
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -270,11 +274,17 @@ export default function ProfilePage() {
       setError(err.message),
     );
   };
-  const handleRemoveFriend = async (friendId: string) => {
-    if (!user) return;
-    await removeFriend(user.uid, friendId).catch((err) =>
+  const handleRemoveFriend = (friend: UserProfile) => {
+    setFriendToRemove(friend);
+  };
+
+  const confirmRemoveFriend = async () => {
+    if (!user || !friendToRemove) return;
+    await removeFriend(user.uid, friendToRemove.id).catch((err) =>
       setError(err.message),
     );
+    setFriendToRemove(null);
+    setIsRemoveMode(false);
   };
 
   const handleCopyUid = () => {
@@ -647,55 +657,49 @@ export default function ProfilePage() {
 
                     {/* Friends List */}
                     <div className="space-y-2 pt-4 border-t border-white/20">
-                      <h3 className="text-xl text-white font-semibold">
-                        My Friends
-                      </h3>
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-xl text-white font-semibold">
+                          My Friends
+                        </h3>
+                        <button
+                          onClick={() => setIsRemoveMode(!isRemoveMode)}
+                          className={`text-sm px-3 py-1 rounded-full transition-colors ${isRemoveMode ? "bg-red-600 text-white" : "bg-white/10 text-white/70 hover:bg-white/20 hover:text-white"}`}
+                        >
+                          {isRemoveMode ? "Done" : "Remove"}
+                        </button>
+                      </div>
                       {friendsDetails.length === 0 && (
                         <p className="text-center text-white/60">
                           You haven't added any friends yet.
                         </p>
                       )}
-                      {friendsDetails.map((friend) => {
-                        const friendFrame = storeItems.find(
-                          (i) => i.id === friend.equippedFrame,
-                        );
-                        const friendAvatar = storeItems.find(
-                          (i) => i.id === friend.equippedAvatar,
-                        );
-                        const isFriendLightFrame =
-                          friendFrame && LIGHT_FRAMES.includes(friendFrame.id);
-                        const friendNameColorClass = isFriendLightFrame
-                          ? "text-gray-900 font-bold"
-                          : "text-white/80";
-                        const colorIndex =
-                          friend.id
-                            .split("")
-                            .reduce(
-                              (acc, char) => acc + char.charCodeAt(0),
-                              0,
-                            ) % AVATAR_COLORS.length;
-                        const avatarColor = AVATAR_COLORS[colorIndex];
-                        return (
-                          <div
-                            key={friend.id}
-                            className="flex items-center gap-2"
-                          >
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                        {friendsDetails.map((friend) => {
+                          const friendFrame = storeItems.find(
+                            (i) => i.id === friend.equippedFrame,
+                          );
+                          const friendAvatar = storeItems.find(
+                            (i) => i.id === friend.equippedAvatar,
+                          );
+                          const isFriendLightFrame =
+                            friendFrame &&
+                            LIGHT_FRAMES.includes(friendFrame.id);
+                          const friendNameColorClass = isFriendLightFrame
+                            ? "text-gray-900 font-bold"
+                            : "text-white/80";
+                          const colorIndex =
+                            friend.id
+                              .split("")
+                              .reduce(
+                                (acc, char) => acc + char.charCodeAt(0),
+                                0,
+                              ) % AVATAR_COLORS.length;
+                          const avatarColor = AVATAR_COLORS[colorIndex];
+                          return (
                             <div
-                              className={`w-10 h-10 rounded-full overflow-hidden ${avatarColor} flex items-center justify-center shrink-0`}
+                              key={friend.id}
+                              className="flex items-center gap-2 bg-black/20 p-2 rounded-lg relative overflow-hidden group"
                             >
-                              {friendAvatar ? (
-                                <img
-                                  src={friendAvatar.imageUrl}
-                                  alt={friend.displayName}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <span className="text-sm font-bold text-white">
-                                  {friend.displayName?.charAt(0).toUpperCase()}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex-1 flex items-center justify-center bg-black/20 p-2 rounded-lg relative overflow-hidden">
                               {friendFrame && (
                                 <img
                                   src={friendFrame.imageUrl}
@@ -703,21 +707,43 @@ export default function ProfilePage() {
                                   className="absolute inset-0 w-full h-full z-0 pointer-events-none object-fill opacity-80"
                                 />
                               )}
-                              <span
-                                className={`truncate relative z-10 w-full text-md ${friendNameColorClass}`}
+                              <div
+                                className={`w-10 h-10 rounded-full overflow-hidden ${avatarColor} flex items-center justify-center shrink-0 z-10`}
                               >
-                                {friend.displayName}
-                              </span>
+                                {friendAvatar ? (
+                                  <img
+                                    src={friendAvatar.imageUrl}
+                                    alt={friend.displayName}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="text-sm font-bold text-white">
+                                    {friend.displayName
+                                      ?.charAt(0)
+                                      .toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0 z-10">
+                                <span
+                                  className={`truncate block w-full text-md ${friendNameColorClass}`}
+                                >
+                                  {friend.displayName}
+                                </span>
+                              </div>
+                              {isRemoveMode && (
+                                <button
+                                  onClick={() => handleRemoveFriend(friend)}
+                                  className="p-2 bg-red-600/80 text-white rounded-lg hover:bg-red-500/80 shrink-0 z-20"
+                                  title="Remove Friend"
+                                >
+                                  <FaUserMinus />
+                                </button>
+                              )}
                             </div>
-                            <button
-                              onClick={() => handleRemoveFriend(friend.id)}
-                              className="p-2 bg-red-600/80 text-white rounded-lg hover:bg-red-500/80 shrink-0"
-                            >
-                              <FaUserMinus />
-                            </button>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
                   </>
                 ) : (
@@ -787,6 +813,38 @@ export default function ProfilePage() {
                 )}
               </div>
             </div>
+
+            {/* Remove Friend Confirmation Modal */}
+            {friendToRemove && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                <div className="bg-gray-800 border border-white/20 rounded-xl p-6 max-w-sm w-full shadow-2xl">
+                  <h3 className="text-xl font-bold text-white mb-4">
+                    Remove Friend?
+                  </h3>
+                  <p className="text-white/80 mb-6">
+                    Are you sure you want to remove{" "}
+                    <span className="font-bold text-white">
+                      {friendToRemove.displayName}
+                    </span>{" "}
+                    from your friends list?
+                  </p>
+                  <div className="flex gap-3 justify-end">
+                    <button
+                      onClick={() => setFriendToRemove(null)}
+                      className="px-4 py-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={confirmRemoveFriend}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg font-semibold transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           // --- LOGGED OUT VIEW ---
