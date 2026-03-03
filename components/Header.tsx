@@ -48,11 +48,19 @@ export const Header = ({
     };
   }, []);
 
+  const formatCoins = (coins: number | undefined) => {
+    if (coins === undefined) return "0";
+    return new Intl.NumberFormat("en-US", {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(coins);
+  };
+
   return (
     <div className="flex justify-between items-center w-full mb-4 sm:mb-6">
       <div className="flex items-center gap-2 bg-gray-900/80 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border border-yellow-500/50 text-yellow-400 font-bold shadow-lg backdrop-blur-md z-10">
         <Coins className="text-yellow-400" />
-        <span>{userProfile?.coins?.toLocaleString() ?? 0}</span>
+        <span>{formatCoins(userProfile?.coins)}</span>
       </div>
 
       <h1 className="text-5xl sm:text-5xl md:text-6xl font-bold text-white tracking-[0.5rem] sm:tracking-[1rem] -mr-2 sm:-mr-4">

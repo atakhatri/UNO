@@ -218,7 +218,7 @@ export default function StorePage() {
                       <img
                         src={featuredItem.imageUrl}
                         alt={featuredItem.name}
-                        className="w-full h-full object-contain"
+                        className="w-full h-full object-contain py-2"
                       />
                     ) : (
                       <div className="text-8xl sm:text-9xl filter drop-shadow-lg">
@@ -351,7 +351,7 @@ export default function StorePage() {
                             <img
                               src={item.imageUrl}
                               alt={item.name}
-                              className="w-full h-full object-contain p-2 transform group-hover:scale-110 transition-transform duration-300"
+                              className="w-full h-full object-contain p-4 transform group-hover:scale-110 transition-transform duration-300"
                             />
                           ) : (
                             <div className="text-center p-4 transform group-hover:scale-110 transition-transform duration-300">

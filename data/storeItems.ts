@@ -28,6 +28,14 @@ export const storeItems: StoreItem[] = [
         type: 'card-back',
         imageUrl: '/store/card-back/dragon.png',
     },
+    {
+        id: 'card_back_frostbite',
+        name: 'Frostbite',
+        description: 'Freeze the opponents with cold blue hues.',
+        price: 750,
+        type: 'card-back',
+        imageUrl: '/store/card-back/frostbite.png',
+    },
 
     // Avatars
     {

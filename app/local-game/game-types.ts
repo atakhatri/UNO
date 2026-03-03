@@ -33,4 +33,5 @@ export const cardBackDesigns = {
     green: { type: 'color' as const, value: 'bg-green-700' },
     neon: { type: 'image' as const, value: '/store/card-back/neon.png' },
     dragon: { type: 'image' as const, value: '/store/card-back/dragon.png' },
+    frostbite: { type: 'image' as const, value: '/store/card-back/frostbite.png' },
 };

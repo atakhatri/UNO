@@ -65,6 +65,26 @@ interface UserProfile {
   equippedCardBack?: string;
 }
 
+const AVATAR_COLORS = [
+  "bg-red-600",
+  "bg-orange-600",
+  "bg-amber-600",
+  "bg-yellow-600",
+  "bg-lime-600",
+  "bg-green-600",
+  "bg-emerald-600",
+  "bg-teal-600",
+  "bg-cyan-600",
+  "bg-sky-600",
+  "bg-blue-600",
+  "bg-indigo-600",
+  "bg-violet-600",
+  "bg-purple-600",
+  "bg-fuchsia-600",
+  "bg-pink-600",
+  "bg-rose-600",
+];
+
 export default function ProfilePage() {
   const router = useRouter();
 
@@ -93,6 +113,7 @@ export default function ProfilePage() {
   >([]);
   const [showSearchInfo, setShowSearchInfo] = useState(false);
   const [isUidCopied, setIsUidCopied] = useState(false);
+  const [previewItem, setPreviewItem] = useState<StoreItem | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -303,12 +324,22 @@ export default function ProfilePage() {
     }
   };
 
-  const equippedAvatarItem = storeItems.find(
-    (i) => i.id === userProfile?.equippedAvatar,
-  );
-  const equippedFrameItem = storeItems.find(
-    (i) => i.id === userProfile?.equippedFrame,
-  );
+  const currentAvatarId =
+    previewItem?.type === "avatar"
+      ? previewItem.id
+      : userProfile?.equippedAvatar;
+  const currentFrameId =
+    previewItem?.type === "frame" ? previewItem.id : userProfile?.equippedFrame;
+
+  const equippedAvatarItem = storeItems.find((i) => i.id === currentAvatarId);
+  const equippedFrameItem = storeItems.find((i) => i.id === currentFrameId);
+
+  // List of frame IDs that are light-colored and require dark text
+  const LIGHT_FRAMES = ["frame_flames", "frame_gold", "frame_silver"]; // Add your light frame IDs here
+  const isLightFrame =
+    equippedFrameItem && LIGHT_FRAMES.includes(equippedFrameItem.id);
+  const nameColorClass = isLightFrame ? "text-gray-900" : "text-white";
+  const emailColorClass = isLightFrame ? "text-gray-900" : "text-white/60";
 
   if (isAuthLoading) {
     return (
@@ -345,22 +376,14 @@ export default function ProfilePage() {
               </Link>
             </header>
 
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-8">
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-8 backdrop-blur-md">
               {/* Left Column: Profile Info */}
               <div className="md:col-span-1 bg-gray-800/50 border border-white/20 rounded-xl p-2 sm:p-6 flex flex-col">
-                <div className="flex items-center justify-between gap-4 mb-6">
-                  <div className="flex items-center gap-4 overflow-hidden">
+                <div className="flex items-center justify-between gap-2 mb-6">
+                  <div className="flex items-center gap-2 overflow-hidden">
                     <div className="relative w-20 h-20 shrink-0 flex items-center justify-center">
-                      {/* Frame */}
-                      {equippedFrameItem && (
-                        <img
-                          src={equippedFrameItem.imageUrl}
-                          alt="Frame"
-                          className="absolute inset-0 w-full h-full z-20 scale-125 pointer-events-none object-contain"
-                        />
-                      )}
                       {/* Avatar */}
-                      <div className="w-16 h-16 rounded-full overflow-hidden bg-blue-600 flex items-center justify-center z-10 border-2 border-white/10">
+                      <div className="w-16 h-16 rounded-full overflow-hidden bg-blue-600 flex items-center justify-center z-10">
                         {equippedAvatarItem ? (
                           <img
                             src={equippedAvatarItem.imageUrl}
@@ -374,18 +397,29 @@ export default function ProfilePage() {
                         )}
                       </div>
                     </div>
-                    <div className="overflow-hidden">
-                      <h2 className="text-2xl font-bold text-white truncate">
-                        {user.displayName}
-                      </h2>
-                      <p className="text-xs text-white/60 break-all">
-                        {user.email}
-                      </p>
+                    <div className="relative overflow-hidden px-4 py-1 rounded-lg flex-1">
+                      {equippedFrameItem && (
+                        <img
+                          src={equippedFrameItem.imageUrl}
+                          alt="Frame"
+                          className="absolute inset-0 w-full h-full z-0 pointer-events-none object-fill opacity-80"
+                        />
+                      )}
+                      <div className="relative z-10">
+                        <h2
+                          className={`text-black/90 text-2xl font-bold truncate ${nameColorClass}`}
+                        >
+                          {user.displayName}
+                        </h2>
+                        <p className={`text-xs break-all ${emailColorClass}`}>
+                          {user.email}
+                        </p>
+                      </div>
                     </div>
                   </div>
                   <Link
                     href="/levels"
-                    className="flex flex-col items-center justify-center p-2 rounded-lg hover:bg-white/10 transition-colors shrink-0"
+                    className="flex flex-col items-center justify-center p-2 md:p-0 hover:bg-white/20 transition-colors shrink-0"
                   >
                     <span className="text-xs text-cyan-400 font-bold uppercase">
                       Level
@@ -428,7 +462,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 mb-2 p-4 bg-linear-to-r from-blue-900/20 to-transparent border border-blue-500/20 rounded-xl">
                   <label className="text-sm font-semibold text-white/70">
                     User ID
                   </label>
@@ -461,18 +495,18 @@ export default function ProfilePage() {
               </div>
 
               {/* Right Column: Friends Management */}
-              <div className="md:col-span-2 bg-gray-800/50 border border-white/20 rounded-xl p-2 sm:p-6 space-y-6 overflow-y-auto">
+              <div className="md:col-span-2 bg-gray-800/50 border border-white/20 backdrop-blur-md rounded-xl p-2 sm:p-6 space-y-6 overflow-y-auto">
                 {/* Tabs */}
-                <div className="flex items-center gap-4 border-b border-white/10 pb-2 sticky top-0 bg-gray-900/95 backdrop-blur-md z-10 -mx-2 px-4 sm:-mx-6 sm:px-6 pt-2 -mt-2 sm:-mt-6">
+                <div className="flex items-center gap-4 pb-4 sticky top-0 z-10 -mx-2 px-4 sm:-mx-6 sm:px-6 pt-2 -mt-2 sm:-mt-6">
                   <button
                     onClick={() => setActiveTab("friends")}
-                    className={`flex items-center gap-2 pb-2 px-2 transition-colors ${activeTab === "friends" ? "text-blue-400 border-b-2 border-blue-400 font-bold" : "text-white/60 hover:text-white"}`}
+                    className={`flex items-center gap-2 pb-2 px-2 transition-colors ${activeTab === "friends" ? "text-green-400 border-b-2 border-green-400 font-bold" : "text-white/60 hover:text-white"}`}
                   >
                     <FaUserFriends /> Friends
                   </button>
                   <button
                     onClick={() => setActiveTab("inventory")}
-                    className={`flex items-center gap-2 pb-2 px-2 transition-colors ${activeTab === "inventory" ? "text-purple-400 border-b-2 border-purple-400 font-bold" : "text-white/60 hover:text-white"}`}
+                    className={`flex items-center gap-2 pb-2 px-2 transition-colors ${activeTab === "inventory" ? "text-amber-400 border-b-2 border-amber-400 font-bold" : "text-white/60 hover:text-white"}`}
                   >
                     <FaPalette /> Customization
                   </button>
@@ -621,20 +655,69 @@ export default function ProfilePage() {
                           You haven't added any friends yet.
                         </p>
                       )}
-                      {friendsDetails.map((friend) => (
-                        <div
-                          key={friend.id}
-                          className="flex items-center justify-between text-white/80 bg-black/20 p-2 rounded-lg"
-                        >
-                          <span className="truncate">{friend.displayName}</span>
-                          <button
-                            onClick={() => handleRemoveFriend(friend.id)}
-                            className="p-2 bg-red-600/80 rounded-lg hover:bg-red-500/80"
+                      {friendsDetails.map((friend) => {
+                        const friendFrame = storeItems.find(
+                          (i) => i.id === friend.equippedFrame,
+                        );
+                        const friendAvatar = storeItems.find(
+                          (i) => i.id === friend.equippedAvatar,
+                        );
+                        const isFriendLightFrame =
+                          friendFrame && LIGHT_FRAMES.includes(friendFrame.id);
+                        const friendNameColorClass = isFriendLightFrame
+                          ? "text-gray-900 font-bold"
+                          : "text-white/80";
+                        const colorIndex =
+                          friend.id
+                            .split("")
+                            .reduce(
+                              (acc, char) => acc + char.charCodeAt(0),
+                              0,
+                            ) % AVATAR_COLORS.length;
+                        const avatarColor = AVATAR_COLORS[colorIndex];
+                        return (
+                          <div
+                            key={friend.id}
+                            className="flex items-center gap-2"
                           >
-                            <FaUserMinus />
-                          </button>
-                        </div>
-                      ))}
+                            <div
+                              className={`w-10 h-10 rounded-full overflow-hidden ${avatarColor} flex items-center justify-center shrink-0`}
+                            >
+                              {friendAvatar ? (
+                                <img
+                                  src={friendAvatar.imageUrl}
+                                  alt={friend.displayName}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-sm font-bold text-white">
+                                  {friend.displayName?.charAt(0).toUpperCase()}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex-1 flex items-center justify-center bg-black/20 p-2 rounded-lg relative overflow-hidden">
+                              {friendFrame && (
+                                <img
+                                  src={friendFrame.imageUrl}
+                                  alt="Frame"
+                                  className="absolute inset-0 w-full h-full z-0 pointer-events-none object-fill opacity-80"
+                                />
+                              )}
+                              <span
+                                className={`truncate relative z-10 w-full text-md ${friendNameColorClass}`}
+                              >
+                                {friend.displayName}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => handleRemoveFriend(friend.id)}
+                              className="p-2 bg-red-600/80 text-white rounded-lg hover:bg-red-500/80 shrink-0"
+                            >
+                              <FaUserMinus />
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   </>
                 ) : (
@@ -656,7 +739,7 @@ export default function ProfilePage() {
                               {items.length}
                             </span>
                           </h3>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                          <div className="flex overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
                             {items.map((item) => {
                               const isEquipped =
                                 (type === "avatar" &&
@@ -670,13 +753,15 @@ export default function ProfilePage() {
                                 <div
                                   key={item.id}
                                   onClick={() => handleEquip(item)}
-                                  className={`relative p-3 rounded-xl border cursor-pointer transition-all hover:scale-105 group ${
+                                  onMouseEnter={() => setPreviewItem(item)}
+                                  onMouseLeave={() => setPreviewItem(null)}
+                                  className={`relative p-2 m-2 rounded-xl border cursor-pointer transition-all hover:scale-105 group min-w-[6rem] w-24 shrink-0 ${
                                     isEquipped
                                       ? "bg-green-500/10 border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.2)]"
                                       : "bg-black/40 border-white/10 hover:border-white/30 hover:bg-white/5"
                                   }`}
                                 >
-                                  <div className="aspect-square relative mb-2 flex items-center justify-center p-2">
+                                  <div className="aspect-square relative mb-1 flex items-center justify-center p-1">
                                     <img
                                       src={item.imageUrl}
                                       alt={item.name}
