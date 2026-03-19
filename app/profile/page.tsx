@@ -781,7 +781,7 @@ export default function ProfilePage() {
                                   onClick={() => handleEquip(item)}
                                   onMouseEnter={() => setPreviewItem(item)}
                                   onMouseLeave={() => setPreviewItem(null)}
-                                  className={`relative p-2 m-2 rounded-xl border cursor-pointer transition-all hover:scale-105 group min-w-[6rem] w-24 shrink-0 ${
+                                  className={`relative p-2 m-2 rounded-xl border cursor-pointer transition-all hover:scale-105 group min-w-24 w-24 shrink-0 ${
                                     isEquipped
                                       ? "bg-green-500/10 border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.2)]"
                                       : "bg-black/40 border-white/10 hover:border-white/30 hover:bg-white/5"
